@@ -1,5 +1,8 @@
+using CSV, DataFrames
 using MetaFEM
+#------------------------------
 # Mesh
+#------------------------------
 dim = 2
 fem_domain = FEM_Domain(dim = dim)
 L_box, e_number = 1., 40
@@ -9,9 +12,11 @@ element_shape = :CUBE
 
 vertices, connections = make_Square(domain_size, element_number, element_shape) 
 ref_mesh = construct_TotalMesh(vertices, connections)
+#------------------------------
 # Define Boundary
+#------------------------------
 @Takeout (vertices, segments) FROM ref_mesh
-sIDs = get_Boundary(ref_mesh)
+sIDs = get_BoundaryMesh(ref_mesh)
 v1IDs = segments.vertex_IDs[1, sIDs] 
 v2IDs = segments.vertex_IDs[2, sIDs] 
 
@@ -26,9 +31,11 @@ sIDs_bottom = sIDs[(x2_mean .< err_scale) .& (x2_mean .> (.- err_scale))]
 sIDs_top = sIDs[(x2_mean .< (L_box .+ err_scale)) .& (x2_mean .> (L_box .- err_scale))]
 
 wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-fixed_bg_ID = add_BoundaryGroup(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
-top_bg_ID = add_BoundaryGroup(wp_ID, sIDs_top; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
+top_bg_ID = add_Boundary(wp_ID, sIDs_top; fem_domain = fem_domain)
+#------------------------------
 # Physics
+#------------------------------
 Δx = L_box / e_number
 ρ = 1e3
 μ = 1.
@@ -65,11 +72,13 @@ end
 
 @time begin
     assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-    assign_BoundaryGroup_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
-    assign_BoundaryGroup_WeakForm(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
+    assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
+    assign_Boundary_WeakForm(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
     initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
 end
+#------------------------------
 ## Assembly
+#------------------------------
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 
 @time begin
@@ -79,25 +88,26 @@ mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_orde
     assemble_Global_Variables(fem_domain = fem_domain)
     compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 end
-## Run & Visualization
+#------------------------------
+## Run
+#------------------------------
 fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
 # fem_domain.linear_solver = x -> solver_LU(x; reorder = 1, singular_tol = 1e-20) 
 # fem_domain.linear_solver = x -> solver_QR(x; reorder = 1, singular_tol = 1e-20)
 fem_domain.globalfield.converge_tol = 1e-4
 
-using GLMakie, Colors
-using CSV, DataFrames
+cpts = fem_domain.workpieces[1].mesh.controlpoints
+@Takeout x1, x2, u1 FROM cpts
+is_occupied = cpts.is_occupied
+dx = L_box/e_number 
 
-fig = Figure(resolution = (1400, 900), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
-ax1 = fig[1, 1] = Axis(fig, title = "Horizontal Velocity on Line x = 0.5",
-                    xticks = (-0.4:0.2:1, string.(-0.4:0.2:1)), xlims = (-0.4, 1.0),
-                    ylims = (0,1), xlabel = "Normalized U₁", ylabel = "y")
-exp_plots, num_plots = [], []
+mid_cp_IDs = (x1 .> L_box/2 - 0.25 * dx) .& (x1 .< L_box/2 + 0.25 * dx)
+num_y = x2[mid_cp_IDs]./L_box |> collect
+exp_us, exp_ys, num_us = [[] for i = 1:3]
+exp_labels, num_labels = [String[] for i =1:2]
 
 Re_arr = [100, 400, 1000, 3200, 5000]
-# Re_arr = [100]
-for (color_id, Re) in pairs(Re_arr)
-
+for Re in Re_arr
     u_st = Re / L_box * μ / ρ
     fem_domain.globalfield.x .= 0.
     fem_domain.globalfield.t = 0.
@@ -119,36 +129,41 @@ for (color_id, Re) in pairs(Re_arr)
         update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
         dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
     end
-
     filename = string("Ghia_Re", Re, ".csv")
-    folder = @__DIR__
-    total_path = string(folder, "\\", filename)
-    file_data = CSV.read(total_path, DataFrame)
+    file_data = CSV.read(joinpath(@__DIR__, filename), DataFrame)
 
-    cpts = fem_domain.workpieces[1].mesh.controlpoints
-    @Takeout x1, x2, u1 FROM cpts
-    is_occupied = cpts.is_occupied
-    dx = L_box/e_number 
+    push!(num_us, collect(u1[mid_cp_IDs] ./ u_st))
+    push!(exp_us, collect(file_data.u))
+    push!(exp_ys, collect(file_data.y))
+end
+#------------------------------
+## Visualization
+#------------------------------
+using CairoMakie, Colors
+fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
+ax1 = fig[1, 1] = Axis(fig, title = "Horizontal Velocity on Line x = 0.5",
+                    xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = "Normalized U₁", ylabel = "y")
+fontsize = 24
+ax1.titlesize = fontsize
+ax1.xlabelsize = fontsize
+ax1.ylabelsize = fontsize
 
-    mid_cp_IDs = (x1 .> L_box/2 - 0.25 * dx) .& (x1 .< L_box/2 + 0.25 * dx)
-    u_plot = u1[mid_cp_IDs]./u_st |> collect
-    y_plot = x2[mid_cp_IDs]./L_box |> collect
-
-    color_val = (color_id / length(Re_arr) + 1) / 2
-    ids = sortperm(y_plot)
-    exp_plot = scatter!(ax1, file_data.u, file_data.y, marker = '■', markersize = 10px, color = RGBf0(color_val, 0, 0))
-    num_plot = scatterlines!(u_plot[ids], y_plot[ids], marker = :circle, markersize = 5px, color = RGBf0(0, 0.5, color_val), markercolor = RGBf0(0, 0.5, color_val))
+exp_plots, num_plots = [], []
+for i = 1:length(Re_arr)
+    color_val = (i / length(Re_arr) + 1) / 2
+    ids = sortperm(num_y)
+    exp_plot = scatter!(ax1, exp_us[i], exp_ys[i], marker = '■', markersize = 10px, color = RGBf0(color_val, 0, 0))
+    num_plot = scatterlines!(num_us[i][ids], num_y[ids], marker = :circle, markersize = 5px, color = RGBf0(0, 0.5, color_val), markercolor = RGBf0(0, 0.5, color_val))
 
     push!(exp_plots, exp_plot)
     push!(num_plots, num_plot)
 end
 exp_plot_names = (x -> string("Re", x, ", Ghia")).(Re_arr)
-num_plot_names = (x -> string("Re", x, ", This_work")).(Re_arr)
-
-leg = fig[1, end + 1] = Legend(fig, [exp_plots..., num_plots...], [exp_plot_names..., num_plot_names...])
+num_plot_names = (x -> string("Re", x, ", MetaFEM")).(Re_arr)
+Legend(fig, [exp_plots..., num_plots...], [exp_plot_names..., num_plot_names...], bbox = (700, 900, 200, 600), labelsize = fontsize)
 display(fig)
 ##
-save(string(folder, "\\", "2D_Ux.png"), fig)
+save(joinpath(@__DIR__, "2D_Ux.png"), fig)
 ## VTK
 fem_domain.linear_solver = solver_LU_CPU
 fem_domain.globalfield.converge_tol = 1e-5

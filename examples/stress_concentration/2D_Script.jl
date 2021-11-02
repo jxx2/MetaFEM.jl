@@ -7,7 +7,7 @@ vert, connections = read_Mesh(src_fname)
 ref_mesh = construct_TotalMesh(vert, connections)
 # To define the boundary (facets), there should be an more elegant interface later
 @Takeout (vertices, segments) FROM ref_mesh
-facet_IDs = get_Boundary(ref_mesh)
+facet_IDs = get_BoundaryMesh(ref_mesh)
 vIDs = segments.vertex_IDs[:, facet_IDs] 
 x1_mean = vec(sum(vertices.x1[vIDs], dims = 1)) ./ size(segments.vertex_IDs, 1)
 x2_mean = vec(sum(vertices.x2[vIDs], dims = 1)) ./ size(segments.vertex_IDs, 1)
@@ -20,11 +20,11 @@ facet_IDs_bottom = facet_IDs[(x2_mean .< err_scale) .& (x2_mean .> (.- err_scale
 facet_IDs_top = facet_IDs[(x2_mean .< (L .+ err_scale)) .& (x2_mean .> (L .- err_scale))]
 
 wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-d1_fix_bg_ID = add_BoundaryGroup(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
-d2_fix_bg_ID = add_BoundaryGroup(wp_ID, facet_IDs_bottom; fem_domain = fem_domain) #left fixed
+d1_fix_bg_ID = add_Boundary(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
+d2_fix_bg_ID = add_Boundary(wp_ID, facet_IDs_bottom; fem_domain = fem_domain) #left fixed
 
-free_bg_ID = add_BoundaryGroup(wp_ID, facet_IDs_right; fem_domain = fem_domain) #bot & right free
-loaded_bg_ID = add_BoundaryGroup(wp_ID, facet_IDs_top; fem_domain = fem_domain) #top loadeds
+free_bg_ID = add_Boundary(wp_ID, facet_IDs_right; fem_domain = fem_domain) #bot & right free
+loaded_bg_ID = add_Boundary(wp_ID, facet_IDs_top; fem_domain = fem_domain) #top loadeds
 
 # To define the Physics
 E = 210e9 #young's modulus
@@ -47,9 +47,9 @@ E = 210e9 #young's modulus
 end
 
 assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-assign_BoundaryGroup_WeakForm(wp_ID, d1_fix_bg_ID, WF_d1_fixed_bdy; fem_domain = fem_domain)
-assign_BoundaryGroup_WeakForm(wp_ID, d2_fix_bg_ID, WF_d2_fixed_bdy; fem_domain = fem_domain)
-assign_BoundaryGroup_WeakForm(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, d1_fix_bg_ID, WF_d1_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, d2_fix_bg_ID, WF_d2_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
 initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces)
 ## Assembly
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
