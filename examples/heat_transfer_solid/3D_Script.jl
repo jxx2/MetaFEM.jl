@@ -37,14 +37,12 @@ initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_
 ## Assembly
 #------------------------------
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
+compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
-@time begin
-    for wp in fem_domain.workpieces
-        update_Mesh(fem_domain.dim, wp, wp.element_space)
-    end
-    assemble_Global_Variables(fem_domain = fem_domain)
-    compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
+for wp in fem_domain.workpieces
+    update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
+assemble_Global_Variables(fem_domain = fem_domain)
 #------------------------------
 ## Run
 #------------------------------

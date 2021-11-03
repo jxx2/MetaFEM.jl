@@ -111,6 +111,7 @@ function initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; e
         wp.max_sd_order = min(max_sd_order, explicit_max_sd_order)
     end
 end
+initialize_LocalAssembly(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9) = initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order)
 
 get_MaxTimeSteps(local_asm::FEM_LocalAssembly) = getindex.(local_asm.local_innervar_infos, 3) |> maximum
 get_MaxTimeSteps(wp::WorkPiece) = get_MaxTimeSteps(wp.local_assembly)

@@ -32,19 +32,18 @@ facet_IDs_top = facet_IDs[(x3_mean .< (L_box .+ err_scale)) .& (x3_mean .> (L_bo
 
 wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
 fix_bg_ID = add_Boundary(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
-free_bg_ID = add_Boundary(wp_ID, vcat(facet_IDs_front, facet_IDs_bottom, facet_IDs_top); fem_domain = fem_domain) #bot & right free
-back_bg_ID = add_Boundary(wp_ID, facet_IDs_back; fem_domain = fem_domain) #bot & right free
-right_bg_ID = add_Boundary(wp_ID, facet_IDs_right; fem_domain = fem_domain) #top loadeds
+free_bg_ID = add_Boundary(wp_ID, vcat(facet_IDs_front, facet_IDs_bottom, facet_IDs_top); fem_domain = fem_domain) #bottom & right & front free
+back_bg_ID = add_Boundary(wp_ID, facet_IDs_back; fem_domain = fem_domain) #back will be loaded
+right_bg_ID = add_Boundary(wp_ID, facet_IDs_right; fem_domain = fem_domain) #top will be loaded
 #------------------------------
 # Physics
 #------------------------------
 Δx = L_box / e_number
-E = 210e9 #young's modulus
-# ν = 0.499 #
+E = 1 #young's modulus
 ν = 0.001
+# ν = 0.0 # 0. term will be simplified
 λ = E * ν / ((1 + ν) * (1 - 2 * ν))
 μ = E / (2 * (1 + ν))
-# τᵇ = 40
 τᵇ = 1000 * E / L_box ^ 2
 
 @Sym d
@@ -67,19 +66,18 @@ end
     assign_Boundary_WeakForm(wp_ID, right_bg_ID, WF_right_bdy; fem_domain = fem_domain)
     
     assign_Boundary_WeakForm(wp_ID, back_bg_ID, WF_back_bdy; fem_domain = fem_domain)
-    initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces)
+    initialize_LocalAssembly(fem_domain)
 end
 #------------------------------
 ## Assembly
 #------------------------------
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
-
+compile_Updater_GPU(; domain_ID = 1, fem_domain = fem_domain)
 @time begin
     for wp in fem_domain.workpieces
         update_Mesh(fem_domain.dim, wp, wp.element_space)
     end
     assemble_Global_Variables(; fem_domain = fem_domain)
-    compile_Updater_GPU(; domain_ID = 1, fem_domain = fem_domain)
 end
 #------------------------------
 ## Run & Gather Data

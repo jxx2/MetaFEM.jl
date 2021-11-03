@@ -12,9 +12,9 @@ function construct_Term(arg::Symbol)
     if arg in keys(VARIABLE_ATTRIBUTES)
         return SymbolicWord(arg, FEM_Int(0), (), ())
     else
-        # this_term = Core.eval(@__MODULE__, arg) #eval so not pure
-        # this_term = Core.eval(Main, arg) #eval so not pure
-        this_term = Base.MainInclude.eval(arg) #eval so not pure
+        # this_term = Core.eval(@__MODULE__, arg) 
+        # this_term = Core.eval(Main, arg) 
+        this_term = Base.MainInclude.eval(arg) 
         if this_term isa GroundTerm
             isempty(get_FreeIndex(this_term)) || error("Scalars don't have index")
             return this_term
@@ -54,9 +54,9 @@ function construct_Term(arg::Expr)
         if sym in keys(VARIABLE_ATTRIBUTES)
             return construct_Word(sym, c_ids, d_ids)
         else
-            # this_term = Core.eval(@__MODULE__, sym) #eval so not pure
-            # this_term = Core.eval(Main, sym) #eval so not pure
-            this_term = Base.MainInclude.eval(sym) #eval so not pure
+            # this_term = Core.eval(@__MODULE__, sym) 
+            # this_term = Core.eval(Main, sym) 
+            this_term = Base.MainInclude.eval(sym) 
             source_free_index = get_FreeIndex(this_term)
             length(source_free_index) == length(c_ids) || error("Wrong index number")
 
