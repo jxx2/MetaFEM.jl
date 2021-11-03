@@ -36,13 +36,13 @@ export write_VTK
 filename_match(x) = match(r"(?<main_name>.*)\.(?<tail_name>[a-z]*$)", x)
 function include_all_file_in_dir(this_dir::String)
     for file_name in readdir(this_dir)
-        this_file_address = string(this_dir, "\\", file_name)
+        this_file_address = joinpath(this_dir, file_name)
         isdir(this_file_address) || include(this_file_address)
     end
 end
 
 function include_dir_from_base(this_name::String)
-    this_dir = string(BASE_DIR, "\\", this_name)
+    this_dir = joinpath(BASE_DIR, this_name)
     include_all_file_in_dir(this_dir)
 end
 
