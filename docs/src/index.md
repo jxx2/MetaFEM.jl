@@ -3,7 +3,7 @@ Welcome to MetaFEM, a GPU-accelerated generic finite element solver by meta-expr
 
 Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.e., MetaFEM takes in some high-level mathematical expressions (PDE weak-forms) and a mesh, e.g., thermal conduction in a pikachu, then outputs the corresponding simulation, e.g., to VTK files, resulting in something similar to the logo through common softwares like Paraview.
 
-Software-wise, MetaFEM is an original implementation from nearly scratch, i.e., MetaFEM is natively coded in Julia directly based on CUDA.jl, with indirect adaptation of the other two external libraries: MacroTools.jl and IterativeSolvers.jl. MetaFEM V1 contains ~5000 lines of code.
+Software-wise, MetaFEM is an original implementation from nearly scratch, i.e., MetaFEM is natively coded in Julia directly based on CUDA.jl, with indirect adaptation of the other two external libraries: MacroTools.jl and IterativeSolvers.jl. MetaFEM V0.1.0 contains ~5000 lines of code.
 
 MetaFEM contains:
 1. A rule-based Computer Algebra System (CAS), i.e., symbolic differentiation and simplification;
