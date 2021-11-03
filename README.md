@@ -1,5 +1,5 @@
 # MetaFEM
-A generic FEM solver by Meta-Expressions
+A generic FEM solver by meta-expressions
 
 Learning to write documents & register package.
 
