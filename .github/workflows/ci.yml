@@ -28,10 +28,10 @@ jobs:
         with:
           version: '1'
       - name: Install dependencies
-       run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
       - name: Build and deploy
-       env:
-         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-         DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-         GKSwstype: '100'
-       run: julia --project=docs --color=yes docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          GKSwstype: '100'
+        run: julia --project=docs --color=yes docs/make.jl
