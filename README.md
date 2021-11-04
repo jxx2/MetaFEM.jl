@@ -7,7 +7,7 @@ A GPU-accelerated generic FEM solver by meta-expressions
 
 ## Overview
 
-<!--- MetaFEM is initially a research project in the [Advanced Manufacturing Processes Laboratory](http://ampl.mech.northwestern.edu/index.html) of Northwestern University, attempting to provide fast, highly customizable evaluations for practical manufacturing processes.--->
+MetaFEM is initially a research project in the [Advanced Manufacturing Processes Laboratory](http://ampl.mech.northwestern.edu/index.html) of Northwestern University, attempting to provide fast, highly customizable evaluations for practical manufacturing processes.
 
 Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.e., MetaFEM takes in some high-level mathematical expressions (PDE weak-forms) and a mesh, e.g., thermal conduction in a pikachu, then outputs the corresponding simulation, e.g., to VTK files, resulting in something similar to the logo through common softwares like Paraview. Different from the classical approaches, MetaFEM uses only the most fundamental concepts, i.e., tensor components added, multiplied or algebraically operated together. There is no RHS/LHS, no Dirichlet boundary, etc., and the script (describing physics) looks just like the mathematical expressions on a mechanics class.
 
