@@ -39,3 +39,8 @@ makedocs(
         "Examples" => SEQUENCED_MD_FILES,
         ],
 )
+##
+deploydocs(
+    repo = "github.com/jxx2/MetaFEM.jl.git",
+    push_preview=true,
+)
