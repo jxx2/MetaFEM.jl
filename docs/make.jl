@@ -1,4 +1,5 @@
-using Documenter, Literate, MetaFEM
+using Documenter, Literate, Pkg #, MetaFEM not registered
+Pkg.precompile()
 
 const is_ci = haskey(ENV, "GITHUB_ACTIONS")
 
