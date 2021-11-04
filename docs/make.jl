@@ -44,4 +44,5 @@ makedocs(
 deploydocs(
     repo = "github.com/jxx2/MetaFEM.jl.git",
     push_preview=true,
+    devbranch = "main",
 )
