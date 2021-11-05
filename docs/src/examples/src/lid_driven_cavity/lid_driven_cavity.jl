@@ -87,8 +87,6 @@ mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_orde
 end
 
 fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
-# fem_domain.linear_solver = x -> solver_LU(x; reorder = 1, singular_tol = 1e-20) 
-# fem_domain.linear_solver = x -> solver_QR(x; reorder = 1, singular_tol = 1e-20)
 fem_domain.globalfield.converge_tol = 1e-4
 
 cpts = fem_domain.workpieces[1].mesh.controlpoints
