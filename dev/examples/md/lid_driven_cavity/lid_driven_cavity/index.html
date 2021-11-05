@@ -71,7 +71,8 @@ mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_orde
     compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 end
 
-fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster</code></pre><p>fem<em>domain.linear</em>solver = x -&gt; solver<em>LU(x; reorder = 1, singular</em>tol = 1e-20) fem<em>domain.linear</em>solver = x -&gt; solver<em>QR(x; reorder = 1, singular</em>tol = 1e-20)</p><pre><code class="language-julia hljs">fem_domain.globalfield.converge_tol = 1e-4
+fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
+fem_domain.globalfield.converge_tol = 1e-4
 
 cpts = fem_domain.workpieces[1].mesh.controlpoints
 @Takeout x1, x2, u1 FROM cpts
@@ -245,7 +246,6 @@ mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_orde
 end
 
 fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
-
 fem_domain.globalfield.converge_tol = 1e-4
 
 cpts = fem_domain.workpieces[1].mesh.controlpoints
@@ -345,4 +345,4 @@ end
 wp = fem_domain.workpieces[1]
 write_VTK(string(folder, &quot;\\&quot;, &quot;2D_Cavity_Flow.vtk&quot;), wp)
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../cylinderflow/cylinderflow/">« Incompressible flow pass a cylinder</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Friday 5 November 2021 16:23">Friday 5 November 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../cylinderflow/cylinderflow/">« Incompressible flow pass a cylinder</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Friday 5 November 2021 16:28">Friday 5 November 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
