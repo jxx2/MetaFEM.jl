@@ -1,7 +1,9 @@
 # # Thermal conduction in a pikachu
 # ![pika1](pika1.png)
 #
-# Let's begin with simulating the temperature distribution on a pikachu.  
+# Let's begin with simulating the temperature distribution on a pikachu. Among all the examples, this example contains the most detailed discussion.
+# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid).
+#
 # First, we load the package by:
 using MetaFEM
 # Then we define a "FEM_Domain" of dimension 3, which will finally turn to one linear system $Kx = d$.

@@ -1,10 +1,12 @@
 # # Linear elastic cantilever bending
-# In this example we simulate a cantilever beam under different loads.
+# In this example we simulate a cantilever beam under different loads, as a straightforward check on the elasticity formulation by comparison to the analytical solutions.
+# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/cantilever).
+#
 # First, we load the package and declare the domain:
 using MetaFEM
 fem_domain = FEM_Domain(dim = 3)
 # ## Geometry
-# For cuboid geometry we have helper functions "make\_Square" and "make\_Brick" for 2D/3D:
+# For cuboid geometry we have helper functions "make\_Square"/"make\_Brick" for 2D/3D:
 L_box, e_number, LW_ratio = 1., 4, 10
 domain_size = (L_box * LW_ratio, L_box, L_box) 
 element_number = (Int(e_number * LW_ratio / 4), e_number, e_number)
