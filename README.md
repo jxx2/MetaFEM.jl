@@ -16,7 +16,7 @@ Quick examples can be found in [examples](https://github.com/jxx2/MetaFEM/tree/m
 ## Current Status
 The package registration needs 3 days (ready ~ 2021/11/06 - 2021/11/07).  
 The project is still in a primitive status.  
-The document only contains an overview and 3 examples.  
+The document only contains an overview and 6 examples.  
 The code is already usable as a single GPU "classical" generic FEM solver.  
 More features are in developement, e.g., distributed computing, etc.. 
 
