@@ -28,7 +28,8 @@ for foldername in readdir(EXAMPLE_SRC_DIR)
     # Literate.notebook(input, md_folder, execute = false)
 end
 
-SEQUENCED_MD_FILES = [joinpath("examples", "md", foldername, string(foldername, ".md")) for foldername in ["pikachu", "cantilever", "cylinderflow"]]
+SEQUENCED_MD_FILES = [joinpath("examples", "md", foldername, string(foldername, ".md")) for foldername in ["pikachu", 
+"thermal_stripe", "cantilever", "stress_concentration", "cylinderflow", "lid_driven_cavity"]]
 
 makedocs(
     format = Documenter.HTML(prettyurls = haskey(ENV, "GITHUB_ACTIONS")), # disable for local builds
