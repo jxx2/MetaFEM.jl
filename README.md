@@ -3,7 +3,7 @@ A GPU-accelerated generic FEM solver by meta-expressions
 
 ## Documentation
 
-[![][docs-dev-img]][docs-dev-url]
+[![][docs-dev-img]][docs-dev-url] [![][docs-paper-img]][docs-paper-url]
 
 ## Overview
 
@@ -21,3 +21,6 @@ More features are in developement, e.g., distributed computing, etc..
 
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/
+
+[docs-paper-img]: https://img.shields.io/badge/paper-arxiv-blue
+[docs-paper-url]: https://arxiv.org/abs/2111.03541
