@@ -62,7 +62,7 @@ assign_Boundary_WeakForm(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_doma
 # Fairly self-illustrative, isn't it? Remarks:
 # * C, k, h, $T_{env}$ are just Julia native variable, i.e., floating-point numbers;
 # * s is an external variable, which means they will not be differentiated and allocated in the final linear system $Kx=d$, but they will have a number per workpiece controlpoint (alias for the FEM mesh vertex, in contrast to the first order mesh nodes we used to describe the geometry).
-# * MetaFEM has default variable declaration of the following code (as in [here](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/01_Types.jl)). So we do not define T again. Also, only the variables which are actually in use (in a weak-form assigned to a workpiece) will be allocated;
+# * Only the variables which are actually in use (in a weak-form assigned to a workpiece) will be allocated. Also, we did not define T because MetaFEM has default variable declaration of the [following code](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/01_Types.jl)):
 # ```julia
 # @External_Sym (x, CONTROLPOINT_VAR) (y, CONTROLPOINT_VAR) (z, CONTROLPOINT_VAR) (t, GLOBAL_VAR) (dt, GLOBAL_VAR)
 # @External_Sym (F, INTEGRATION_POINT_VAR) (f, INTEGRATION_POINT_VAR) (n, INTEGRATION_POINT_VAR) δ
