@@ -67,6 +67,7 @@ write_VTK(string(@__DIR__, "\\", "3D_MetaFEM_Result.vtk"), wp; scale = 100)
 #  re-plot the data (sampled in paraview and extracted as CSV) in Julia
 #------------------------------
 using CSV, DataFrames
+using CairoMakie, Colors
 COMSOL_a = CSV.read(joinpath(@__DIR__, "COMSOL_a.csv"), DataFrame)
 COMSOL_b = CSV.read(joinpath(@__DIR__, "COMSOL_b.csv"), DataFrame)
 MetaFEM_a = CSV.read(joinpath(@__DIR__, "MetaFEM_a.csv"), DataFrame)
