@@ -2,6 +2,11 @@ using CUDA.CUSOLVER: csrlsvqr!, csrlsvlu!
 using LinearAlgebra: lu
 using SparseArrays: sparse
 
+"""
+    solver_LU_CPU(globalfield)
+
+CPU LU solver.
+"""
 function solver_LU_CPU(globalfield) 
     @Takeout (K_I, K_J, K_val_ids, K_total, residue) FROM globalfield
     
@@ -18,6 +23,11 @@ function solver_LU_CPU(globalfield)
     cu(x_cpu)
 end
 
+"""
+    solver_LU_CPU(globalfield; reorder::Integer = 1, singular_tol::Number) 
+
+GPU LU solver with `CUDA`'s `csrlsvlu!`. Note, `csrlsvlu!` is essentially a host function and the device part is not accessible.
+"""
 function solver_LU(globalfield; reorder::Integer = 1, singular_tol::Number) 
     @Takeout (K_I, K_J, K_val_ids, K_total, residue) FROM globalfield
     
@@ -37,6 +47,11 @@ function solver_LU(globalfield; reorder::Integer = 1, singular_tol::Number)
     cu(cpu_x)
 end
 
+"""
+    solver_QR(globalfield; reorder::Integer = 1, singular_tol::Number)
+
+GPU QR solver with `CUDA`'s `csrlsvqr!`.
+"""
 function solver_QR(globalfield; reorder::Integer = 1, singular_tol::Number)
     @Takeout (K_I, K_J, K_val_ids, K_total, residue, converge_tol) FROM globalfield
     

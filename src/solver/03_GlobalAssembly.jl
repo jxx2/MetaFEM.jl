@@ -1,3 +1,8 @@
+"""
+    assemble_Global_Variables(; fem_domain::FEM_Domain)
+
+This function allocates the sparse `K`, dense `x` and `d`.
+"""
 function assemble_Global_Variables(; fem_domain::FEM_Domain)
     @Takeout (workpieces, globalfield) FROM fem_domain
 
@@ -45,6 +50,12 @@ function assemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
     end
 end
 
+"""
+    dessemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
+
+This function dessembles `globalfield`.`x` to local data, i.e., `workpiece`.`mesh`.`controlpoint`.`sym`,
+like `workpiece.mesh.controlpoint.T`.
+"""
 function dessemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
     @Takeout (basicfield_size, x) FROM globalfield
     for wp in workpieces

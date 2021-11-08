@@ -17,11 +17,14 @@ export make_Square, make_Brick
 export read_Mesh, construct_TotalMesh, get_BoundaryMesh
 
 # Symbolics
-export @Sym, @External_Sym, @Def, @Takeout, VARIABLE_ATTRIBUTES
-export assign_WorkPiece_WeakForm, assign_Boundary_WeakForm, initialize_LocalAssembly
+export @Sym, @External_Sym, @Def, VARIABLE_ATTRIBUTES
+export assign_WorkPiece_WeakForm, assign_Boundary_WeakForm
 
 # Assembly
-export mesh_Classical, update_Mesh, assemble_Global_Variables, compile_Updater_GPU
+export initialize_LocalAssembly, mesh_Classical, compile_Updater_GPU
+
+# Run
+export update_Mesh, assemble_Global_Variables
 export update_OneStep, dessemble_X
 
 # Linear Solvers
@@ -30,8 +33,9 @@ export solver_LU_CPU, solver_QR, solver_LU, solver_BiCG, solver_IDRs
 # Preconditioners
 export precondition_CUDA_Jacobi, precondition_CUDA_ILU
 
-#Visualizations
+# Other Helper Functions
 export write_VTK
+export @Takeout
 
 filename_match(x) = match(r"(?<main_name>.*)\.(?<tail_name>[a-z]*$)", x)
 function include_all_file_in_dir(this_dir::String)

@@ -1,3 +1,8 @@
+"""
+    solver_BiCG(globalfield; Pl_func::Function = precondition_Nothing, max_iter = 5000, max_pass = 4, l = 8)
+
+GPU bicgstabl (a classical stablized bi conjugate gradient method) solver.
+"""
 function solver_BiCG(globalfield; Pl_func::Function = precondition_Nothing, max_iter = 5000, max_pass = 4, l = 8)
     @Takeout (K_I, K_J, K_val_ids, K_total, residue, converge_tol) FROM globalfield
 

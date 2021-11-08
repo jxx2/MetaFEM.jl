@@ -27,6 +27,16 @@ function register_SymbolicTerm(input_ex::Expr, output_ex::Expr)
     return output_ex
 end
 
+"""
+    @Def ex 
+    @Def begin
+        ex1
+        ex2
+        ...
+    end
+
+`@Def` defines a symbolic term, e.g., 1, `σ{i, j}``, Bilinear(⋅, ⋅), etc.
+"""
 macro Def(input_ex)
     input_ex_batch = vectorize_Args(input_ex)
     output_ex = Expr(:block)

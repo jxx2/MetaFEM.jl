@@ -1,3 +1,8 @@
+"""
+    write_VTK(fname::String, wp::WorkPiece; scale = 1.)
+
+Output all the variables in `WorkPiece` `wp` to file `fname`. The `scale` is only for the length scale, i.e., node coordinates.
+"""
 function write_VTK(fname::String, wp::WorkPiece; scale = 1.)
     @Takeout (element_space.element_attributes, local_assembly.local_innervar_infos) FROM wp
     @Takeout (controlpoints, elements) FROM wp.mesh

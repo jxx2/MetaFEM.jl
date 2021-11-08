@@ -1,5 +1,5 @@
-using Documenter, Literate, Pkg 
-Pkg.precompile()
+using Documenter, Literate, Pkg, MetaFEM 
+# Pkg.precompile()
 
 const is_ci = haskey(ENV, "GITHUB_ACTIONS")
 
@@ -38,6 +38,7 @@ makedocs(
     strict = false,
     pages = Any[
         "Home" => "index.md",
+        "APIs" => "api.md",
         "Examples" => SEQUENCED_MD_FILES,
         ],
 )

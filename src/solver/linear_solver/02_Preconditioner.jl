@@ -8,6 +8,11 @@ struct CUDA_Jacobi
     jac_vec
 end
 
+"""
+    precondition_CUDA_Jacobi(A::CuSparseMatrixCSR{T})
+
+GPU Jacobi preconditioner.
+"""
 function precondition_CUDA_Jacobi(A::CuSparseMatrixCSR{T}) where T
     J_ptr = A.rowPtr
     Js = A.colVal
@@ -36,6 +41,11 @@ struct CUDA_ILU
     ilu_mat
 end
 
+"""
+    precondition_CUDA_ILU(A)
+
+GPU ILU preconditioner with `CUDA`'s `ilu02!`.
+"""
 precondition_CUDA_ILU(A) = CUDA_ILU(ilu02!(copy(A), 'O'))
 function LinearAlgebra.ldiv!(Pl::CUDA_ILU, b) 
     T = eltype(Pl.ilu_mat)

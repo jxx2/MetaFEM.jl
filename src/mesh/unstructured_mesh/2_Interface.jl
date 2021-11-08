@@ -1,3 +1,9 @@
+"""
+    mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp_order::Integer, itg_order::Integer, fem_domain::FEM_Domain)
+
+The function generates the mesh of order `itp_order`, interpolation type `itp_type` = `:Lagrange`/`:Serendipity` with gaussian quadrature of order `itg_order` on `fem_domain`.`workpieces`[`wp_IDs`].
+The dimension and mesh type (`:CUBE`/`:SIMPLEX`) will follow the first order mesh of each `WorkPiece`.
+"""
 function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp_order::Integer, itg_order::Integer, fem_domain::FEM_Domain)
     dim = fem_domain.dim
     for wp in fem_domain.workpieces[wp_IDs]
@@ -85,6 +91,11 @@ function declare_Basic_Element(dim::Integer, this_space::Classical_Discretizatio
     return construct_GPUTable(elements, Symbol[] .=> Array[])
 end
 
+"""
+    update_Mesh(dim::Integer, wp::WorkPiece, this_space::Classical_Discretization)
+
+This function updates Jacobians and interpolation values.
+"""
 function update_Mesh(dim::Integer, wp::WorkPiece, this_space::Classical_Discretization)
     if dim == 2
         itpval_kernel = BASE_KERNELS_2D[wp.max_sd_order]        

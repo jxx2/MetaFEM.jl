@@ -54,8 +54,25 @@ end
 
 #object
 #--------------------------
+"""
+    WorkPiece
+
+A `WorkPiece` is a meshed part assigned with some known physics. The attributes are:
+
+* `ref_geometry`, the first order mesh to describe the FEM_Geometry.
+* `physics`, the raw PDE weakforms.
+* `local_assembly`, the re-organized PDE weakforms with sorted/indexed variables.
+* `max_sd_order`, an explicit limit of the maximum spatial derivative order to save memory.
+* `element_space`, the information about the spatial discritization, i.e., interpolation and intergration.
+* `mesh`, the mesh regenerated according to the `element_space` and actually used in simulation.
+
+To add a `Workpiece` with the geometry `ref_geometry` to the [`FEM_Domain`](@ref) `fem_domain`, the exposed API is:
+
+    add_WorkPiece(ref_geometry; fem_domain::FEM_Domain)
+
+which returns the `WorkPiece` ID in the `fem_domain`.`workpieces`.
+"""
 mutable struct WorkPiece <: FEM_Object
-    self_mergeable::Bool
     ref_geometry::FEM_Geometry
 
     physics::FEM_Physics
@@ -65,8 +82,8 @@ mutable struct WorkPiece <: FEM_Object
     element_space::FEM_Spatial_Discretization
     mesh::FEM_WP_Mesh
 
-    function WorkPiece(ref_geometry; self_mergeable::Bool = true)
-        new(self_mergeable, ref_geometry, FEM_Physics())
+    function WorkPiece(ref_geometry;)
+        new(ref_geometry, FEM_Physics())
     end
 end
 
@@ -114,6 +131,26 @@ mutable struct GlobalField #global infos & FEM data, should be separated later
     GlobalField() = new(0, 0, 0., 0., 0.)
 end
 
+"""
+    FEM_Domain
+
+A `FEM_Domain` contains everything needed to assemble a linear system `Kx=d` in FEM. The attributes are:
+
+* `dim`, the dimension, 2 or 3.
+* `workpieces`, the array of all the `WorkPiece`s in this domain, which will be finally solved in fully coupling.
+* `tools`, reserved for the external geometry `Tool`, e.g., for contact. Not implemented.
+* `time_discretization`, the temporal discritization scheme. Currently only generalized-α method is implemented.
+* `globalfield`, the container for sparse `K`, dense `x` and `d` in `Kx=d`.
+* `K_linear_func` the generated function to update the linear part of `K`.
+* `K_nonlinear_func` the generated function to update the nonlinear part of `K` and the residue `d`.
+* `linear_solver`, the applied linear solver.
+
+To add a `FEM_Domain` of dimension `dim`, the exposed API is:
+
+    FEM_Domain(; dim::Integer)
+
+which returns the new `FEM_Domain`.
+"""
 mutable struct FEM_Domain #workgroup
     dim::Integer
     workpieces::Vector{WorkPiece}
@@ -136,13 +173,21 @@ function add_WorkPiece(ref_geometry; fem_domain::FEM_Domain)
     return wp_ID
 end
 
-function add_Boundary(ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WP)
-    if target == :WP
-        boundarys = fem_domain.workpieces[ID].physics.boundarys
-        msg = string("Boundary ", length(boundarys) + 1, " added to Workpiece ", ID, " !")
+"""
+    add_Boundary(ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WorkPiece)
+
+In a 2D/3D `FEM_Domain` `fem_domain`, mark the segment/face IDs of the `WorkPiece` `fem_domain`.`workpieces`[`wp_ID`] as a boundary, to assign physics later.
+Multiple boundaries are independent from each other and can share the same segment/face IDs. If target = `:Tool`, the boundary is of `fem_domain`.`tools`[`wp_ID`], not implemented.
+
+The function returns the boundary group ID `bg_ID`.
+"""
+function add_Boundary(wp_ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WorkPiece)
+    if target == :WorkPiece
+        boundarys = fem_domain.workpieces[wp_ID].physics.boundarys
+        msg = string("Boundary ", length(boundarys) + 1, " added to Workpiece ", wp_ID, " !")
     elseif target == :Tool
-        boundarys = fem_domain.tools[ID].boundarys
-        msg = string("Boundary ", length(boundarys) + 1, " added to Tool ", ID, " !")
+        boundarys = fem_domain.tools[wp_ID].boundarys
+        msg = string("Boundary ", length(boundarys) + 1, " added to Tool ", wp_ID, " !")
     end
     push!(boundarys, bdy_ref_edge_IDs)
     bg_ID = boundarys |> length |> FEM_Int
@@ -150,13 +195,19 @@ function add_Boundary(ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_D
     return bg_ID
 end
 
+"""
+    assign_WorkPiece_WeakForm(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+    assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+
+The functions assign `this_term`, which is either a bilinear term Bilinear(⋅, ⋅), or a sum of the bilinear terms, to the target `WorkPiece` or boundary.
+"""
 function assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
     this_sym_weakform = parse_WeakForm(this_term, fem_domain.dim)
     this_sym_weakform == 0 && return
     fem_domain.workpieces[wp_ID].physics.boundary_weakform_pairs[bg_ID] = this_sym_weakform
 end
-assign_Boundary_WeakForm(wp_ID::FEM_Int, bg_ID::FEM_Int, this_term::FEM_Float; fem_domain::FEM_Domain) = this_term == 0 ? this_term : error()
-function assign_WorkPiece_WeakForm(wp_ID::FEM_Int, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::FEM_Float; fem_domain::FEM_Domain) = this_term == 0 ? this_term : error()
+function assign_WorkPiece_WeakForm(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
     this_sym_weakform = parse_WeakForm(this_term, fem_domain.dim)
     fem_domain.workpieces[wp_ID].physics.domain_weakform = this_sym_weakform
 end

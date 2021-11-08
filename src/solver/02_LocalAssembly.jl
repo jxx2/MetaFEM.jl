@@ -76,6 +76,13 @@ function construct_AssembleWeakform(dim::Integer, source::Symbolic_WeakForm, bva
 end
 get_SparsePos(wf::AssembleWeakform) = wf.gradID_by_pos |> keys |> collect
 
+"""
+    initialize_LocalAssembly(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9)
+    initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; explicit_max_sd_order::Integer = 9)
+
+This function preprocesses/reorganizes the weakforms. The input `explicit_max_sd_order` is the exposed API for 
+explicitly limit high order spatial derivative.
+"""
 function initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; explicit_max_sd_order::Integer = 9)
     for wp in workpieces
         @Takeout (extra_var, domain_weakform, boundary_weakform_pairs) FROM wp.physics

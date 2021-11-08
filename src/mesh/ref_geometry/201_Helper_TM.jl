@@ -1,3 +1,9 @@
+"""
+    make_Square(x::Tuple, n::Tuple, shape = :CUBE)
+    make_Brick(x::Tuple, n::Tuple, shape = :CUBE)
+
+Helper functions to creates a grid, i.e., the mesh nodes are positioned at cubic lattice points, with mesh shape = `:CUBE` or `:SIMPLEX` defining the connection.
+"""
 function make_Square(x::Tuple, n::Tuple, shape = :CUBE)
     dx = x ./ n
     coors = zeros(FEM_Float, 2, prod(n .+ 1))

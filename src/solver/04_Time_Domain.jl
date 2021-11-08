@@ -49,6 +49,13 @@ function update_x_star(globalfield::GlobalField, time_discretization::GeneralAlp
 end
 
 normalized_norm(x) = norm(x) / sqrt(length(x))
+
+"""
+    update_OneStep(time_discretization::GeneralAlpha; max_iter::Integer = 4, fem_domain::FEM_Domain)
+
+This function calculates `K(Δx)=d` and updates `x += (Δx)`. `max_iter` determines the maximum iteration for Δx with different `K` and `d` in nonlinear cases.
+The converge tolerance is determined by `fem_domain`.`globalfield`.`converge_tol` while the linear solver is `fem_domain`.`linear_solver`.
+"""
 function update_OneStep(time_discretization::GeneralAlpha; max_iter::Integer = 4, fem_domain::FEM_Domain)
     @Takeout (workpieces, globalfield) FROM fem_domain
 

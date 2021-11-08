@@ -15,6 +15,15 @@ function enum_Local(variable_set, attr::Vector{Symbol} = Symbol[])
     return ex
 end
 
+"""
+    @Sym (name, attribute_1, attribute_2,...)
+    @External_Sym (name, attribute_1, attribute_2,...)
+
+`@Sym` declares a variable symbol `name` with the attributes `attribute_1`, `attribute_2`, ..., 
+which is simply stored as the pair `name` => (`attribute_1`, `attribute_2`, ...) in the exposed global dictionary `VARIABLE_ATTRIBUTES`.
+
+`@External_Sym` is just the `@Sym` with one default attribute: `:EXTERNAL_VAR`.
+"""
 macro Sym(variable_set...) 
     return esc(enum_Local(variable_set))
 end

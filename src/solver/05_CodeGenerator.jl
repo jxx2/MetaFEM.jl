@@ -257,7 +257,12 @@ function gen_CodeBody(fem_genfunc::Function; fem_domain::FEM_Domain)
     end
     return wp_total_code 
 end
+"""
+    compile_Updater_GPU(; domain_ID::Integer, fem_domain::FEM_Domain)
 
+The function generates `fem_domain`.`K_linear_func` and `fem_domain`.`K_nonlinear_func`.
+The input `domain_ID` is only used to generate the function name.
+"""
 function compile_Updater_GPU(; domain_ID::Integer, fem_domain::FEM_Domain)
     linear_func_name = Symbol("update_K_Linear_", "domain_ID")
     linear_func_body = :(

@@ -7,6 +7,21 @@ B_S_V_CUBE = [[1, 2], [2, 3], [3, 4], [4, 1], [1, 5], [2, 6], [3, 7], [4, 8], [5
 B_F_S_SIMPLEX = [[1, 2, 3], [1, 5, 4], [2, 6, 5], [3, 4, 6]]
 B_F_S_CUBE = [[1, 2, 3, 4], [1, 6, 9, 5], [2, 7, 10, 6], [3, 8, 11, 7], [4, 8, 12, 5], [9, 10, 11, 12]]
 
+"""
+    construct_TotalMesh(coors::CuArray, connections::CuArray)
+
+The function reads (vert, connections) and declares the first order mesh, `FEM_Geometry`.
+
+There are 4 concepts in a `FEM_Geometry`:
+* Each vertex in `vertices` stores the vertex coordinates.
+* Each segment in `segments` stores the vertex IDs connected to this segment.
+* Each face in `faces` stores both the vertex IDs and the segment IDs connected to this face.
+* Each block in `blocks` stores the vertex IDs, the segment IDs and the face IDs connected to this block.
+If applicable, the IDs are in order, e.g., segment IDs in a face are clockwise/counter-clockwise (since we can't define an outward normal for a bare face).
+
+The function returns either a `Geo_TotalMesh2D` with attributes (`vertices`, `segments`, `faces`) or a 
+`Geo_TotalMesh3D` with attributes (`vertices`, `segments`, `faces`, `blocks`).
+"""
 function construct_TotalMesh(coors::CuArray, connections::CuArray)
     dim, _ = size(coors)
     if dim == 2 
@@ -240,6 +255,12 @@ function construct_BoundaryMesh_3D(coors::CuArray, connection::CuArray)
     return ref_geometry
 end
 
+"""
+    get_BoundaryMesh(total_mesh::Geo_TotalMesh2D)
+    get_BoundaryMesh(total_mesh::Geo_TotalMesh3D)
+
+Helper function to collect all the segment/face IDs which can be marked as boundary.
+"""
 function get_BoundaryMesh(total_mesh::Geo_TotalMesh2D)
     @Takeout (segments, faces) FROM total_mesh
     f_el_num = CUDA.zeros(FEM_Int, length(segments.is_occupied))

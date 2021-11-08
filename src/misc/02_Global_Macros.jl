@@ -39,6 +39,23 @@ macro If_Match(sentence, syntax_structure...)
     return esc(ex)
 end
 
+"""
+    @Takeout a, b FROM c
+
+equals 
+
+    a = c.a
+    b = c.b
+
+while
+
+    @Takeout a, b FROM c WITH PREFIX d
+
+equals 
+
+    da = c.a
+    db = c.b
+"""
 macro Takeout(sentence...)
     ex = Expr(:block)
     arg_tuple = vectorize_Args(sentence[1])
