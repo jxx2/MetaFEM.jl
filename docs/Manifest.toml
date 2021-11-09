@@ -207,9 +207,9 @@ uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 
 [[MetaFEM]]
 deps = ["CUDA", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "e651ccbb82b5b1d736af423b8f7a37ac61a03634"
+git-tree-sha1 = "7f7c3931ae0a1f29141d95604e90a4ac30114227"
 uuid = "12c6fc8f-875a-4553-8591-2d09aedcb433"
-version = "0.1.0"
+version = "0.1.1"
 
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
