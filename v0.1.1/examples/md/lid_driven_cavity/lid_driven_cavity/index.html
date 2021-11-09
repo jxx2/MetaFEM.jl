@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lid-driven cavity · MetaFEM.jl</title><script data-outdated-warner src="../../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../../assets/documenter.js"></script><script src="../../../../siteinfo.js"></script><script src="../../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../../"><img src="../../../../assets/logo.png" alt="MetaFEM.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../../">MetaFEM.jl</a></span></div><form class="docs-search" action="../../../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../../../">Home</a></li><li><a class="tocitem" href="../../../../api/">APIs</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../../pikachu/pikachu/">Thermal conduction in a pikachu</a></li><li><a class="tocitem" href="../../thermal_stripe/thermal_stripe/">Various thermal boundary conditions on a 2D stripe</a></li><li><a class="tocitem" href="../../cantilever/cantilever/">Linear elastic cantilever bending</a></li><li><a class="tocitem" href="../../stress_concentration/stress_concentration/">Stress concentration of a hole</a></li><li><a class="tocitem" href="../../cylinderflow/cylinderflow/">Incompressible flow pass a cylinder</a></li><li class="is-active"><a class="tocitem" href>Lid-driven cavity</a><ul class="internal"><li><a class="tocitem" href="#Geometry"><span>Geometry</span></a></li><li><a class="tocitem" href="#Boundary"><span>Boundary</span></a></li><li><a class="tocitem" href="#Physics"><span>Physics</span></a></li><li><a class="tocitem" href="#Assemble-and-Run"><span>Assemble &amp; Run</span></a></li><li><a class="tocitem" href="#Visualization"><span>Visualization</span></a></li><li><a class="tocitem" href="#VTK"><span>VTK</span></a></li><li><a class="tocitem" href="#Bare-script"><span>Bare script</span></a></li></ul></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lid-driven cavity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lid-driven cavity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jxx2/MetaFEM.jl/blob/master/docs/src/examples/src/lid_driven_cavity/lid_driven_cavity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Lid-driven-cavity"><a class="docs-heading-anchor" href="#Lid-driven-cavity">Lid-driven cavity</a><a id="Lid-driven-cavity-1"></a><a class="docs-heading-anchor-permalink" href="#Lid-driven-cavity" title="Permalink"></a></h1><p>Lid-driven cavity is perhaps the most well-known example in CFD like hello-world.</p><p><img src="../cavity_both.png" alt="cavity_flow"/></p><p>The streamline is the Re = 1000 case and visualized in Paraview. The full source/data/visualization is <a href="https://github.com/jxx2/MetaFEM.jl/tree/main/examples/lid_driven_cavity_flow">here</a>.</p><p>First, we load the package and declare the domain:</p><pre><code class="language-julia hljs">using MetaFEM
+dim = 2
+fem_domain = FEM_Domain(dim = dim)</code></pre><h2 id="Geometry"><a class="docs-heading-anchor" href="#Geometry">Geometry</a><a id="Geometry-1"></a><a class="docs-heading-anchor-permalink" href="#Geometry" title="Permalink"></a></h2><pre><code class="language-julia hljs">L_box, e_number = 1., 40
+domain_size = (L_box, L_box)
+element_number = (e_number, e_number)
+element_shape = :CUBE
+
+vertices, connections = make_Square(domain_size, element_number, element_shape)
+ref_mesh = construct_TotalMesh(vertices, connections)</code></pre><h2 id="Boundary"><a class="docs-heading-anchor" href="#Boundary">Boundary</a><a id="Boundary-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary" title="Permalink"></a></h2><pre><code class="language-julia hljs">@Takeout (vertices, segments) FROM ref_mesh
+sIDs = get_BoundaryMesh(ref_mesh)
+v1IDs = segments.vertex_IDs[1, sIDs]
+v2IDs = segments.vertex_IDs[2, sIDs]
+
+x1_mean = (vertices.x1[v1IDs] .+ vertices.x1[v2IDs]) ./ 2
+x2_mean = (vertices.x2[v1IDs] .+ vertices.x2[v2IDs]) ./ 2
+
+err_scale = L_box / e_number * 0.01
+
+sIDs_left = sIDs[(x1_mean .&lt; err_scale) .&amp; (x1_mean .&gt; (.- err_scale))]
+sIDs_right = sIDs[(x1_mean .&lt; (L_box .+ err_scale)) .&amp; (x1_mean .&gt; (L_box .- err_scale))]
+sIDs_bottom = sIDs[(x2_mean .&lt; err_scale) .&amp; (x2_mean .&gt; (.- err_scale))]
+sIDs_top = sIDs[(x2_mean .&lt; (L_box .+ err_scale)) .&amp; (x2_mean .&gt; (L_box .- err_scale))]
+
+wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
+top_bg_ID = add_Boundary(wp_ID, sIDs_top; fem_domain = fem_domain)</code></pre><h2 id="Physics"><a class="docs-heading-anchor" href="#Physics">Physics</a><a id="Physics-1"></a><a class="docs-heading-anchor-permalink" href="#Physics" title="Permalink"></a></h2><pre><code class="language-julia hljs">Δx = L_box / e_number
+ρ = 1e3
+μ = 1.
+ν = μ / ρ
+Cᵇ = 128 # 8, 16, 32
+τᵇ = μ / ρ * Cᵇ / Δx
+
+@Sym u p
+@External_Sym (uʷ, CONTROLPOINT_VAR) (τᵐ, CONTROLPOINT_VAR) (τᶜ, CONTROLPOINT_VAR)
+
+@Def begin
+    Rc = u{m;m}
+    Rm{i} = u{m} * u{i;m} + p{;i} / ρ - μ / ρ * u{i;m,m}
+end
+
+@Def begin
+    NS_domain_BASE = - ρ * Bilinear(u{i;j}, u{i} * u{j}) - Bilinear(u{i;i}, p) + Bilinear(p, u{i;i}) + μ * Bilinear(u{i;j}, u{i;j})
+
+    NS_domain_SUPG = τᵐ * ρ * Bilinear(u{i;j}, Rm{i} * u{j}) + τᵐ * Bilinear(p{;i}, Rm{i}) + τᶜ * ρ * Bilinear(u{i;i}, Rc)
+    NS_boundary_BASE = ρ * Bilinear(u{i}, u{i} * u{j} * n{j}) + Bilinear(u{i}, p * n{i}) - μ * Bilinear(u{i}, u{i;j} * n{j})
+
+    NS_boundary_DISP = ρ * Bilinear(u{i}, (uʷ{i} * uʷ{j} - u{i} * u{j}) * n{j}) + Bilinear(p, (uʷ{i} - u{i}) * n{i}) +
+                        μ * Bilinear(u{i;j}, (uʷ{i} - u{i}) * n{j}) + τᵇ * ρ * Bilinear(u{i}, u{i} - uʷ{i})
+
+    NS_boundary_FIX = ρ * Bilinear(u{i}, - u{i} * u{j} * n{j}) + Bilinear(p, - u{i} * n{i}) +
+                      μ * Bilinear(u{i;j}, - u{i} * n{j}) + τᵇ * ρ * Bilinear(u{i}, u{i})
+end
+
+@Def begin
+    WF_domain = NS_domain_BASE + NS_domain_SUPG
+    WF_boundary_top = NS_boundary_BASE + NS_boundary_DISP
+    WF_boundary_fix = NS_boundary_BASE + NS_boundary_FIX
+end
+
+assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)</code></pre><h2 id="Assemble-and-Run"><a class="docs-heading-anchor" href="#Assemble-and-Run">Assemble &amp; Run</a><a id="Assemble-and-Run-1"></a><a class="docs-heading-anchor-permalink" href="#Assemble-and-Run" title="Permalink"></a></h2><pre><code class="language-julia hljs">initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
+
+@time begin
+    for wp in fem_domain.workpieces
+        update_Mesh(fem_domain.dim, wp, wp.element_space)
+    end
+    assemble_Global_Variables(fem_domain = fem_domain)
+    compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
+end
+
+fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
+fem_domain.globalfield.converge_tol = 1e-4
+
+cpts = fem_domain.workpieces[1].mesh.controlpoints
+@Takeout x1, x2, u1 FROM cpts
+is_occupied = cpts.is_occupied
+dx = L_box/e_number
+
+mid_cp_IDs = (x1 .&gt; L_box/2 - 0.25 * dx) .&amp; (x1 .&lt; L_box/2 + 0.25 * dx)
+num_y = x2[mid_cp_IDs]./L_box |&gt; collect
+exp_us, exp_ys, num_us = [[] for i = 1:3]
+exp_labels, num_labels = [String[] for i =1:2]
+
+Re_arr = [100, 400, 1000, 3200, 5000]
+for Re in Re_arr
+    u_st = Re / L_box * μ / ρ
+    fem_domain.globalfield.x .= 0.
+    fem_domain.globalfield.t = 0.
+    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+    tmax = Re &gt; 1000 ? 10 : ceil(Re / 100) |&gt; Int
+    for i = 1:tmax
+        cpts = fem_domain.workpieces[1].mesh.controlpoints
+        cp_IDs = findall(cpts.is_occupied)
+
+        u_top = u_st * (i / tmax)
+        dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+
+        cpts.uʷ1[cp_IDs] .= u_top
+        cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
+        cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
+
+        println(&quot;Timestep &quot;, i, &quot; velocity = &quot;, u_top, &quot; tol = &quot;, fem_domain.globalfield.converge_tol)
+        update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+        dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+    end
+    filename = string(&quot;Ghia_Re&quot;, Re, &quot;.csv&quot;)
+    file_data = CSV.read(joinpath(@__DIR__, filename), DataFrame)
+
+    push!(num_us, collect(u1[mid_cp_IDs] ./ u_st))
+    push!(exp_us, collect(file_data.u))
+    push!(exp_ys, collect(file_data.y))
+end</code></pre><h2 id="Visualization"><a class="docs-heading-anchor" href="#Visualization">Visualization</a><a id="Visualization-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization" title="Permalink"></a></h2><p>CSV files contain Ghia&#39;s data is also in the <a href="https://github.com/jxx2/MetaFEM.jl/tree/main/examples/lid_driven_cavity_flow">example folder</a>.</p><pre><code class="language-julia hljs">using CSV, DataFrames
+using CairoMakie, Colors
+fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
+ax1 = fig[1, 1] = Axis(fig, title = &quot;Horizontal Velocity on Line x = 0.5&quot;,
+                    xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = &quot;Normalized U₁&quot;, ylabel = &quot;y&quot;)
+fontsize = 24
+ax1.titlesize = fontsize
+ax1.xlabelsize = fontsize
+ax1.ylabelsize = fontsize
+
+exp_plots, num_plots = [], []
+for i = 1:length(Re_arr)
+    color_val = (i / length(Re_arr) + 1) / 2
+    ids = sortperm(num_y)
+    exp_plot = scatter!(ax1, exp_us[i], exp_ys[i], marker = &#39;■&#39;, markersize = 10px, color = RGBf0(color_val, 0, 0))
+    num_plot = scatterlines!(num_us[i][ids], num_y[ids], marker = :circle, markersize = 5px, color = RGBf0(0, 0.5, color_val), markercolor = RGBf0(0, 0.5, color_val))
+
+    push!(exp_plots, exp_plot)
+    push!(num_plots, num_plot)
+end
+exp_plot_names = (x -&gt; string(&quot;Re&quot;, x, &quot;, Ghia&quot;)).(Re_arr)
+num_plot_names = (x -&gt; string(&quot;Re&quot;, x, &quot;, MetaFEM&quot;)).(Re_arr)
+Legend(fig, [exp_plots..., num_plots...], [exp_plot_names..., num_plot_names...], bbox = (700, 900, 200, 600), labelsize = fontsize)
+display(fig)
+
+save(joinpath(@__DIR__, &quot;2D_Ux.png&quot;), fig)</code></pre><h2 id="VTK"><a class="docs-heading-anchor" href="#VTK">VTK</a><a id="VTK-1"></a><a class="docs-heading-anchor-permalink" href="#VTK" title="Permalink"></a></h2><pre><code class="language-julia hljs">fem_domain.linear_solver = solver_LU_CPU
+fem_domain.globalfield.converge_tol = 1e-5
+
+Re = 1000
+u_st = Re / L_box * μ / ρ
+fem_domain.globalfield.x .= 0.
+fem_domain.globalfield.t = 0
+dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+tmax = Re &gt; 1000 ? 10 : ceil(Re / 100) |&gt; Int
+for i = 1:tmax
+    cpts = fem_domain.workpieces[1].mesh.controlpoints
+    cp_IDs = findall(cpts.is_occupied)
+
+    u_top = u_st * (i / tmax)
+    dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+
+    cpts.uʷ1[cp_IDs] .= u_top
+    cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
+    cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
+
+    println(&quot;Timestep &quot;, i, &quot; velocity = &quot;, u_top, &quot; tol = &quot;, fem_domain.globalfield.converge_tol)
+    update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+end
+
+wp = fem_domain.workpieces[1]
+write_VTK(string(folder, &quot;\\&quot;, &quot;2D_Cavity_Flow.vtk&quot;), wp)</code></pre><h2 id="Bare-script"><a class="docs-heading-anchor" href="#Bare-script">Bare script</a><a id="Bare-script-1"></a><a class="docs-heading-anchor-permalink" href="#Bare-script" title="Permalink"></a></h2><pre><code class="language-julia hljs">using MetaFEM
+dim = 2
+fem_domain = FEM_Domain(dim = dim)
+
+L_box, e_number = 1., 40
+domain_size = (L_box, L_box)
+element_number = (e_number, e_number)
+element_shape = :CUBE
+
+vertices, connections = make_Square(domain_size, element_number, element_shape)
+ref_mesh = construct_TotalMesh(vertices, connections)
+
+@Takeout (vertices, segments) FROM ref_mesh
+sIDs = get_BoundaryMesh(ref_mesh)
+v1IDs = segments.vertex_IDs[1, sIDs]
+v2IDs = segments.vertex_IDs[2, sIDs]
+
+x1_mean = (vertices.x1[v1IDs] .+ vertices.x1[v2IDs]) ./ 2
+x2_mean = (vertices.x2[v1IDs] .+ vertices.x2[v2IDs]) ./ 2
+
+err_scale = L_box / e_number * 0.01
+
+sIDs_left = sIDs[(x1_mean .&lt; err_scale) .&amp; (x1_mean .&gt; (.- err_scale))]
+sIDs_right = sIDs[(x1_mean .&lt; (L_box .+ err_scale)) .&amp; (x1_mean .&gt; (L_box .- err_scale))]
+sIDs_bottom = sIDs[(x2_mean .&lt; err_scale) .&amp; (x2_mean .&gt; (.- err_scale))]
+sIDs_top = sIDs[(x2_mean .&lt; (L_box .+ err_scale)) .&amp; (x2_mean .&gt; (L_box .- err_scale))]
+
+wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
+top_bg_ID = add_Boundary(wp_ID, sIDs_top; fem_domain = fem_domain)
+
+Δx = L_box / e_number
+ρ = 1e3
+μ = 1.
+ν = μ / ρ
+Cᵇ = 128 # 8, 16, 32
+τᵇ = μ / ρ * Cᵇ / Δx
+
+@Sym u p
+@External_Sym (uʷ, CONTROLPOINT_VAR) (τᵐ, CONTROLPOINT_VAR) (τᶜ, CONTROLPOINT_VAR)
+
+@Def begin
+    Rc = u{m;m}
+    Rm{i} = u{m} * u{i;m} + p{;i} / ρ - μ / ρ * u{i;m,m}
+end
+
+@Def begin
+    NS_domain_BASE = - ρ * Bilinear(u{i;j}, u{i} * u{j}) - Bilinear(u{i;i}, p) + Bilinear(p, u{i;i}) + μ * Bilinear(u{i;j}, u{i;j})
+
+    NS_domain_SUPG = τᵐ * ρ * Bilinear(u{i;j}, Rm{i} * u{j}) + τᵐ * Bilinear(p{;i}, Rm{i}) + τᶜ * ρ * Bilinear(u{i;i}, Rc)
+    NS_boundary_BASE = ρ * Bilinear(u{i}, u{i} * u{j} * n{j}) + Bilinear(u{i}, p * n{i}) - μ * Bilinear(u{i}, u{i;j} * n{j})
+
+    NS_boundary_DISP = ρ * Bilinear(u{i}, (uʷ{i} * uʷ{j} - u{i} * u{j}) * n{j}) + Bilinear(p, (uʷ{i} - u{i}) * n{i}) +
+                        μ * Bilinear(u{i;j}, (uʷ{i} - u{i}) * n{j}) + τᵇ * ρ * Bilinear(u{i}, u{i} - uʷ{i})
+
+    NS_boundary_FIX = ρ * Bilinear(u{i}, - u{i} * u{j} * n{j}) + Bilinear(p, - u{i} * n{i}) +
+                      μ * Bilinear(u{i;j}, - u{i} * n{j}) + τᵇ * ρ * Bilinear(u{i}, u{i})
+end
+
+@Def begin
+    WF_domain = NS_domain_BASE + NS_domain_SUPG
+    WF_boundary_top = NS_boundary_BASE + NS_boundary_DISP
+    WF_boundary_fix = NS_boundary_BASE + NS_boundary_FIX
+end
+
+assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
+assign_Boundary_WeakForm(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
+
+initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
+
+@time begin
+    for wp in fem_domain.workpieces
+        update_Mesh(fem_domain.dim, wp, wp.element_space)
+    end
+    assemble_Global_Variables(fem_domain = fem_domain)
+    compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
+end
+
+fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
+fem_domain.globalfield.converge_tol = 1e-4
+
+cpts = fem_domain.workpieces[1].mesh.controlpoints
+@Takeout x1, x2, u1 FROM cpts
+is_occupied = cpts.is_occupied
+dx = L_box/e_number
+
+mid_cp_IDs = (x1 .&gt; L_box/2 - 0.25 * dx) .&amp; (x1 .&lt; L_box/2 + 0.25 * dx)
+num_y = x2[mid_cp_IDs]./L_box |&gt; collect
+exp_us, exp_ys, num_us = [[] for i = 1:3]
+exp_labels, num_labels = [String[] for i =1:2]
+
+Re_arr = [100, 400, 1000, 3200, 5000]
+for Re in Re_arr
+    u_st = Re / L_box * μ / ρ
+    fem_domain.globalfield.x .= 0.
+    fem_domain.globalfield.t = 0.
+    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+    tmax = Re &gt; 1000 ? 10 : ceil(Re / 100) |&gt; Int
+    for i = 1:tmax
+        cpts = fem_domain.workpieces[1].mesh.controlpoints
+        cp_IDs = findall(cpts.is_occupied)
+
+        u_top = u_st * (i / tmax)
+        dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+
+        cpts.uʷ1[cp_IDs] .= u_top
+        cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
+        cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
+
+        println(&quot;Timestep &quot;, i, &quot; velocity = &quot;, u_top, &quot; tol = &quot;, fem_domain.globalfield.converge_tol)
+        update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+        dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+    end
+    filename = string(&quot;Ghia_Re&quot;, Re, &quot;.csv&quot;)
+    file_data = CSV.read(joinpath(@__DIR__, filename), DataFrame)
+
+    push!(num_us, collect(u1[mid_cp_IDs] ./ u_st))
+    push!(exp_us, collect(file_data.u))
+    push!(exp_ys, collect(file_data.y))
+end
+
+using CSV, DataFrames
+using CairoMakie, Colors
+fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
+ax1 = fig[1, 1] = Axis(fig, title = &quot;Horizontal Velocity on Line x = 0.5&quot;,
+                    xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = &quot;Normalized U₁&quot;, ylabel = &quot;y&quot;)
+fontsize = 24
+ax1.titlesize = fontsize
+ax1.xlabelsize = fontsize
+ax1.ylabelsize = fontsize
+
+exp_plots, num_plots = [], []
+for i = 1:length(Re_arr)
+    color_val = (i / length(Re_arr) + 1) / 2
+    ids = sortperm(num_y)
+    exp_plot = scatter!(ax1, exp_us[i], exp_ys[i], marker = &#39;■&#39;, markersize = 10px, color = RGBf0(color_val, 0, 0))
+    num_plot = scatterlines!(num_us[i][ids], num_y[ids], marker = :circle, markersize = 5px, color = RGBf0(0, 0.5, color_val), markercolor = RGBf0(0, 0.5, color_val))
+
+    push!(exp_plots, exp_plot)
+    push!(num_plots, num_plot)
+end
+exp_plot_names = (x -&gt; string(&quot;Re&quot;, x, &quot;, Ghia&quot;)).(Re_arr)
+num_plot_names = (x -&gt; string(&quot;Re&quot;, x, &quot;, MetaFEM&quot;)).(Re_arr)
+Legend(fig, [exp_plots..., num_plots...], [exp_plot_names..., num_plot_names...], bbox = (700, 900, 200, 600), labelsize = fontsize)
+display(fig)
+
+save(joinpath(@__DIR__, &quot;2D_Ux.png&quot;), fig)
+
+fem_domain.linear_solver = solver_LU_CPU
+fem_domain.globalfield.converge_tol = 1e-5
+
+Re = 1000
+u_st = Re / L_box * μ / ρ
+fem_domain.globalfield.x .= 0.
+fem_domain.globalfield.t = 0
+dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+tmax = Re &gt; 1000 ? 10 : ceil(Re / 100) |&gt; Int
+for i = 1:tmax
+    cpts = fem_domain.workpieces[1].mesh.controlpoints
+    cp_IDs = findall(cpts.is_occupied)
+
+    u_top = u_st * (i / tmax)
+    dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+
+    cpts.uʷ1[cp_IDs] .= u_top
+    cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
+    cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
+
+    println(&quot;Timestep &quot;, i, &quot; velocity = &quot;, u_top, &quot; tol = &quot;, fem_domain.globalfield.converge_tol)
+    update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+end
+
+wp = fem_domain.workpieces[1]
+write_VTK(string(folder, &quot;\\&quot;, &quot;2D_Cavity_Flow.vtk&quot;), wp)
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../cylinderflow/cylinderflow/">« Incompressible flow pass a cylinder</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 9 November 2021 00:06">Tuesday 9 November 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
