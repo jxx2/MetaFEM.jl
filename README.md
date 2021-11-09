@@ -14,9 +14,11 @@ Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.
 Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev/examples/md/pikachu/pikachu/) and [sources](https://github.com/jxx2/MetaFEM/tree/main/examples), where "*.jl" files are the main scripts. 
 
 ## Current Status
-The package is usable as a single GPU "classical" generic FEM solver.  
-The project is in its initial release, and the documents are to be extended in the following days.  
-More features are in developement, e.g., distributed computing, etc.. 
+The package is usable as a single GPU-accelerated generic FEM solver.  
+
+The first version of document is considered completed, although it will be further extended in the following weeks.
+  
+More features are in developement, e.g., more examples, distributed computing, cutcell mesh, etc.. 
 
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/
