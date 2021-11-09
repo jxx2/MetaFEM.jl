@@ -42,7 +42,7 @@ end
 """
     @Takeout a, b FROM c
 
-equals 
+equals to
 
     a = c.a
     b = c.b
@@ -51,7 +51,7 @@ while
 
     @Takeout a, b FROM c WITH PREFIX d
 
-equals 
+equals to
 
     da = c.a
     db = c.b
