@@ -143,24 +143,6 @@ function derivative(p1::Polynomial{dim}, orders::Tuple) where dim
     return check_Clear(p2)
 end
 
-function spatial_CPU_Integration(p1::Polynomial{2}, vertices::Vector)
-    sum = 0
-    for (this_factor, this_order) in zip(p1.factors, p1.orders)
-        this_term = moment_2D(this_order[1], this_order[2], vertices)
-        sum += this_term * this_factor
-    end
-    return sum
-end
-
-function generic_CPU_Integration_Lookup(p1::Polynomial{dim}, moment_of_inertia) where dim
-    sum = 0
-    for (this_factor, this_order) in zip(p1.factors, p1.orders)
-        this_term = moment_of_inertia[(this_order .+ 1)...]
-        sum += this_term * this_factor
-    end
-    return sum
-end
-
 function evaluate_Polynomial(p1::Polynomial{dim}, pos::Tuple) where dim
     sum = 0
     for (this_factor, this_order) in zip(p1.factors, p1.orders)

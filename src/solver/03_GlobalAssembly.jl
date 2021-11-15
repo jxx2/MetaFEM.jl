@@ -43,7 +43,7 @@ function assemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
         local_data = get_Data(controlpoints)
         cpIDs = findall(c_is_occupied)
         basic_cpID = c_global_cpID[cpIDs]
-        Threads.@threads for (local_sym, basic_pos, td_order) in local_innervar_infos
+        for (local_sym, basic_pos, td_order) in local_innervar_infos
             global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * basicfield_size)
             x[global_cpIDs] .= local_data[local_sym][cpIDs]
         end
@@ -64,7 +64,7 @@ function dessemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
         local_data = get_Data(controlpoints)
         cpIDs = findall(c_is_occupied)
         basic_cpID = c_global_cpID[cpIDs]
-        Threads.@threads for (local_sym, basic_pos, td_order) in local_innervar_infos
+        for (local_sym, basic_pos, td_order) in local_innervar_infos
             global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * basicfield_size)
             local_data[local_sym][cpIDs] .= x[global_cpIDs]
         end
