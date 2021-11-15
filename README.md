@@ -36,6 +36,8 @@ The first version of document is considered completed, although it will be furth
   
 More features are in developement, e.g., more examples, distributed computing, cutcell mesh, etc.. 
 
+The immediate next step is to make the simulation distributed, denoted by version v0.2.0, which will be the first formal release allowing a simulation at the practical scale. Before that, any minor bug-fix will be denoted as v0.1.x.
+
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/
 
