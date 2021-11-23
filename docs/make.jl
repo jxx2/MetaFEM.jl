@@ -1,7 +1,4 @@
 using Documenter, Literate, Pkg, MetaFEM 
-# Pkg.precompile()
-
-const is_ci = haskey(ENV, "GITHUB_ACTIONS")
 
 EXAMPLE_SRC_DIR = joinpath(@__DIR__, "src", "examples", "src")
 EXAMPLE_MD_DIR = joinpath(@__DIR__, "src", "examples", "md")

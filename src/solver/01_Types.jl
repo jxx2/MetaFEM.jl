@@ -42,7 +42,7 @@ end
 mutable struct FEM_LocalAssembly
     basic_vars::Vector{Symbol} #basic symbol for x allocation
     local_innervar_infos::Vector{Tuple{Symbol, FEM_Int, FEM_Int}} #(local symbol, basic_pos, time_order) for local var allocation
-    local_extervars::Vector{Symbol} #local symbol  for local var allocation
+    local_extervars::Vector{Symbol} #local symbol for local var allocation
 
     assembled_boundary_weakform_pairs::Dict{FEM_Int, AssembleWeakform} #bg_ID, wf
     assembled_weakform::AssembleWeakform

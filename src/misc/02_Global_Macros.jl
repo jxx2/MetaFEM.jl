@@ -118,3 +118,22 @@ end
 const FEM_Int = Int32 #Note, hashing some GPU FEM_Int like indices may assume last 30 bits in 2D, 20 bits in 3D, so not really needed anything above Int32
 # const FEM_Float = Float32
 const FEM_Float = Float64
+
+## Memory profiler, need to re polish for tables
+function estimate_msize(x::T, counter_func::Function) where T
+    msize = counter_func(x)
+    if isstructtype(T)
+        for fname in fieldnames(T)
+            msize += estimate_msize(getfield(x, fname), counter_func)
+        end
+    end
+    return msize
+end # recursively count the total size of an object
+
+CPU_sizeof(x::T, budget::Integer = 0) where T <: AbstractArray = sizeof(x) + Base.elsize(T) * budget
+CPU_sizeof(x, budget::Integer = 0) = sizeof(x)
+GPU_sizeof(x::T, budget::Integer = 0) where T <: CuArray = sizeof(x) + Base.elsize(T) * budget
+GPU_sizeof(x, budget::Integer = 0) = 0 
+
+estimate_memory_CPU(x, budget::Integer = 0) = estimate_msize(x, t -> CPU_sizeof(t, budget))
+estimate_memory_GPU(x, budget::Integer = 0) = estimate_msize(x, t -> GPU_sizeof(t, budget))
