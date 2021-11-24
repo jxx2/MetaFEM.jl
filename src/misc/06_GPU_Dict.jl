@@ -44,7 +44,6 @@ function dumb_GPUDict_Init(new_keys::CuVector{UInt64}, new_vals::CuVector)
 end
 
 function GPUDict_SetID(source_dict::GPUDict, new_keys::CuVector{UInt64})
-
     isempty(new_keys) && return cu(Int32[])
 
     @Takeout (keys, hashs, hash_init, hash_prev, hash_next) FROM source_dict
@@ -69,7 +68,7 @@ function GPUDict_SetID(source_dict::GPUDict, new_keys::CuVector{UInt64})
         if source_dict_size > 0
             @Dumb_CUDA_Batch 256 dict_SetID(expanded_keys, expanded_hashs, expanded_hash_init, expanded_hash_prev, expanded_hash_next, source_keys, mapped_IDs)
         end
-        ##
+        
         source_data = get_Data(source_dict)
         for var_name in get_VarNames(source_dict)
             var_data = source_data[var_name]
@@ -139,11 +138,9 @@ dumb_GPUDict_Get(source_dict::GPUDict, target_keys::CuVector{T}) where T <: Inte
 function dumb_GPUDict_Get(source_dict::GPUDict, target_keys::CuVector{UInt64})
     target_IDs = GPUDict_GetID(source_dict, target_keys)
     target_arr = CUDA.zeros(eltype(source_dict.vals), length(target_IDs))
-    success_pos = findall(target_IDs .> 0)
-    failed_pos = findall(target_IDs .<= 0)
-    target_arr[success_pos] .= source_dict.vals[target_IDs[success_pos]]
-    target_arr[failed_pos] .= target_IDs[failed_pos]
-    return target_arr
+    
+    prod(target_IDs .> 0) || error("Wrong key")
+    return source_dict.vals[target_IDs]
 end
 
 function GPUDict_GetID_Single(dict_keys, hashs, hash_init, hash_next, target_key)
@@ -160,9 +157,35 @@ function GPUDict_GetID_Single(dict_keys, hashs, hash_init, hash_next, target_key
     end
 end
 
+# @Dumb_Kernel dict_GetID(dict_keys, hashs, hash_init, hash_next, target_keys, target_IDs) begin
+#     target_IDs[thread_idx] = GPUDict_GetID_Single(dict_keys, hashs, hash_init, hash_next, target_keys[thread_idx])
+# end
+
 @Dumb_Kernel dict_GetID(dict_keys, hashs, hash_init, hash_next, target_keys, target_IDs) begin
-    this_key = target_keys[thread_idx]
-    target_IDs[thread_idx] = GPUDict_GetID_Single(dict_keys, hashs, hash_init, hash_next, this_key)
+    # target_IDs[thread_idx] = GPUDict_GetID_Single(dict_keys, hashs, hash_init, hash_next, target_keys[thread_idx])
+    target_key = target_keys[thread_idx]
+    current_size = length(dict_keys)
+    start_ID = update_TruncID(GPU_hash_64_64(target_key), current_size)
+    this_ID = hash_init[start_ID]
+
+    if this_ID == 0 
+        target_IDs[thread_idx] = Int32(0)
+        return 
+    end
+
+    while true
+        if dict_keys[this_ID] == target_key # Found
+            target_IDs[thread_idx] = this_ID
+            return
+        elseif ~(update_TruncID(hashs[this_ID], current_size) == start_ID) #error
+            target_IDs[thread_idx] = Int32(-1)
+            return
+        elseif hash_next[this_ID] == 0 # Not exist
+            target_IDs[thread_idx] = Int32(0)
+            return
+        end
+        this_ID = hash_next[this_ID]
+    end
 end
 
 function GPUDict_DelID(source_dict::GPUDict, del_keys::CuVector{UInt64})

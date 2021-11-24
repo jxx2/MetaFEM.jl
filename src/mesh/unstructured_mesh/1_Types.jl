@@ -57,7 +57,7 @@ mutable struct Basic_WP_Mesh <: FEM_WP_Mesh
     facets::GPUTable #boundaries 
     elements::GPUTable
     # cp_pos_2_el_pos::GPUDict
-    cp_cp_2_sparseID::GPUDict
+    # cp_cp_2_sparseID::GPUDict
 
     bg_fIDs::Dict{FEM_Int, CuVector{FEM_Int}}
     variable_size::FEM_Int

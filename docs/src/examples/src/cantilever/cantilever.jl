@@ -160,37 +160,17 @@ push!(y_plots[2], y_plot_num ./ y_max)
 push!(plot_labels[1], "Linearly distributed pressure, analytical")
 push!(plot_labels[2], "Linearly distributed pressure, MetaFEM")
 # ## Plot
-# With Makie.jl:
-using CairoMakie, Colors
-
-fig = Figure(resolution = (1400, 900))
-ax1 = fig[1, 1] = Axis(fig, title = "Normalized deflection on the line y = z = 0.5",
-                    xlims = (0., 10.0), xticks = 0:2:10, ylims = (0, 1), yticks = 0:0.2:1, xlabel = "x", ylabel = "Normalized d₂")
-fontsize = 24
-ax1.titlesize = fontsize
-ax1.xlabelsize = fontsize
-ax1.ylabelsize = fontsize
-
-plots = [[] for i = 1:2]
-
-ana_plot = scatter!(ax1, x_plot, y_plots[1][1], marker = '■', markersize = 10px, color = :blue)
-num_plot = scatterlines!(ax1, x_plot, y_plots[2][1], marker = :circle, markersize = 5px, color = :red, markercolor = :red)
-push!(plots[1], ana_plot)
-push!(plots[2], num_plot)
-
-ana_plot = scatter!(ax1, x_plot, y_plots[1][2], marker = '■', markersize = 10px, color = :gray)
-num_plot = scatterlines!(ax1, x_plot, y_plots[2][2], marker = :circle, markersize = 5px, color = :brown, markercolor = :brown)
-push!(plots[1], ana_plot)
-push!(plots[2], num_plot)
-
-ana_plot = scatter!(ax1, x_plot, y_plots[1][3], marker = '■', markersize = 10px, color = :green)
-num_plot = scatterlines!(ax1, x_plot, y_plots[2][3], marker = :circle, markersize = 5px, color = :purple, markercolor = :purple)
-push!(plots[1], ana_plot)
-push!(plots[2], num_plot)
-
-Legend(fig, vcat(plots...), vcat(plot_labels...), bbox = (300, 500, 600, 800), labelsize = fontsize)
-fig
-# ![cantilever](cantilever.png)
+# With Plots.jl:
+using Plots
+fig = plot(; size=(800,800), title = "Normalized deflection on the line y = z = 0.5", xlims = (-1., 11.), xticks = 0:2:10, ylims = (-0.1, 1.1), yticks = 0:0.2:1, xlabel = "x", ylabel = "Normalized d₂")
+for i = 1:3
+    color_val = (i / 3 + 1) / 2
+    scatter!(fig, x_plot, y_plots[1][i], markershape = :rect, markersize = 6, color = RGBA(color_val, 0, 0, 1), label = plot_labels[1][i])
+    plot!(fig, x_plot, y_plots[2][i], markershape = :circle, markersize = 3, color = RGBA(0, 0.5, color_val, 1), markercolor = RGBA(0, 0.5, color_val, 1), label = plot_labels[2][i])
+end
+fig.subplots[1].attr[:legend_position] = (0.2, 0.8)
+png(fig, joinpath(@__DIR__, "3D_Cantilever_Plots.png"))
+# ![cantilever](3D_Cantilever_Plots.png)
 # ## Bare script
 # ```julia
 # @__CODE__

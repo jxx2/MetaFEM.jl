@@ -16,7 +16,8 @@ end
 
 macro Dumb_CUDA_Batch(block_size, body)
     major_arr_sym = body.args[end]
-    out_ex = :(@cuda blocks = ceil(Int, length($major_arr_sym)/$block_size) threads = $block_size $body)
+    # out_ex = :(@cuda blocks = ceil(Int, length($major_arr_sym)/$block_size) threads = $block_size $body)
+    out_ex = :(@cuda blocks = ceil(Int, size($major_arr_sym)[end]/$block_size) threads = $block_size $body)
     return esc(out_ex)
 end
 

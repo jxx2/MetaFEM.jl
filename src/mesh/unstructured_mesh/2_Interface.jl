@@ -12,7 +12,7 @@ function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp
         controlpoints = declare_Basic_ControlPoint(dim, wp)
         facets = declare_Basic_Facet(dim, this_space)
         elements = declare_Basic_Element(dim, this_space)
-        cp_cp_2_sparseID = construct_GPUDict([:sparseID => FEM_Int(0)])
+        # cp_cp_2_sparseID = construct_GPUDict([:sparseID => FEM_Int(0)])
 
         bg_fIDs = Dict{FEM_Int, CuVector{FEM_Int}}()
         variable_size = FEM_Int(0)
@@ -35,7 +35,7 @@ function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp
         else
             error("Undefined dimension")
         end
-        println("Allocate ", volumeof(controlpoints), " bytes for physical DOF and ", (facets, elements, cp_cp_2_sparseID) .|> volumeof |> sum, " bytes for geometry")
+        println("Allocate controlpoints with $(report_memory(controlpoints)), facets with $(report_memory(facets)), and elements with $(report_memory(elements))")
     end
 end
 

@@ -128,7 +128,7 @@ mutable struct GlobalField #global infos & FEM data, should be separated later
     
     K_linear::CuVector{FEM_Float}
     K_total::CuVector{FEM_Float}
-    GlobalField() = new(0, 0, 0., 0., 0.)
+    GlobalField() = new(0, 0, 0., 0., 0., Dict{Symbol, FEM_Float}())
 end
 
 """

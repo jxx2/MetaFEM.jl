@@ -21,7 +21,8 @@ function gen_BasicDomain_Funcs(dim::Integer)
         for X_dim = 1:$dim
             $jac_block
         end
-        integral_vals[:, :, ($ID_for_no_diff)..., elIDs] .= ref_itp_vals[:, :, ($ID_for_no_diff)...]
+        # integral_vals[:, :, ($ID_for_no_diff)..., elIDs] .= ref_itp_vals[:, :, ($ID_for_no_diff)...]
+        integral_vals[:, :, $(ID_for_no_diff...), elIDs] .= ref_itp_vals[:, :, $(ID_for_no_diff...)]
         CUDA.@sync @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, dets, inverse_jacobian, elIDs)
 
         CUDA.@sync @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, ref_itp_vals, inverse_jacobian, elIDs)

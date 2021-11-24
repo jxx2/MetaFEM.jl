@@ -29,14 +29,14 @@ function assemble_Global_Variables(; fem_domain::FEM_Domain)
     globalfield.x_star = CUDA.zeros(FEM_Float, globalfield_size)
     globalfield.residue = CUDA.zeros(FEM_Float, basicfield_size)
 
-    println("Global field assembled with DOF = ", basicfield_size, " and occupied memory = ", (3 * globalfield_size + basicfield_size) * sizeof(FEM_Float), " bytes")
-    assemble_X(workpieces, globalfield)
+    println("Global field x and d allocated with basic DOF = $basicfield_size, global DOF = $globalfield_size.")
 
-    assemble_SparseID(workpieces, globalfield)
+    # assemble_X(workpieces, globalfield)
+
+    # assemble_SparseID(workpieces, globalfield)
 end
 
 function assemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
-    @Takeout (basicfield_size, x) FROM globalfield
     for wp in workpieces
         @Takeout (mesh.controlpoints, mesh.variable_size, local_assembly.local_innervar_infos) FROM wp
         @Takeout (global_cpID, is_occupied) FROM controlpoints WITH PREFIX c_
@@ -44,8 +44,8 @@ function assemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
         cpIDs = findall(c_is_occupied)
         basic_cpID = c_global_cpID[cpIDs]
         for (local_sym, basic_pos, td_order) in local_innervar_infos
-            global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * basicfield_size)
-            x[global_cpIDs] .= local_data[local_sym][cpIDs]
+            global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * globalfield.basicfield_size)
+            globalfield.x[global_cpIDs] .= local_data[local_sym][cpIDs]
         end
     end
 end
@@ -57,7 +57,6 @@ This function dessembles `globalfield`.`x` to local data, i.e., `workpiece`.`mes
 like `workpiece.mesh.controlpoint.T`.
 """
 function dessemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
-    @Takeout (basicfield_size, x) FROM globalfield
     for wp in workpieces
         @Takeout (mesh.controlpoints, mesh.variable_size, local_assembly.local_innervar_infos) FROM wp 
         @Takeout (global_cpID, is_occupied) FROM controlpoints WITH PREFIX c_
@@ -65,14 +64,15 @@ function dessemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
         cpIDs = findall(c_is_occupied)
         basic_cpID = c_global_cpID[cpIDs]
         for (local_sym, basic_pos, td_order) in local_innervar_infos
-            global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * basicfield_size)
-            local_data[local_sym][cpIDs] .= x[global_cpIDs]
+            global_cpIDs = basic_cpID .+ (basic_pos * variable_size + td_order * globalfield.basicfield_size)
+            local_data[local_sym][cpIDs] .= globalfield.x[global_cpIDs]
         end
     end
 end
 
 function assemble_SparseID(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
     last_sparse_ID = 0
+    cp_cp_2_sparseID_dicts = GPUDict[]
     for wp in workpieces
         @Takeout (mesh, local_assembly) FROM wp
         @Takeout (sparse_IDs_by_el, controlpoint_IDs, is_occupied) FROM mesh.elements
@@ -93,14 +93,20 @@ function assemble_SparseID(workpieces::Vector{WorkPiece}, globalfield::GlobalFie
                 counter += 1
             end
         end
-        # overlapping_dict_IDs = GPUDict_SetID(cp_cp_2_sparseID, cp_cp_keys)
         GPUDict_SetID(cp_cp_2_sparseID, cp_cp_keys)
 
-        total_dict_IDs = get_Total_IDs(cp_cp_2_sparseID)
+        CUDA.@sync  total_dict_IDs = get_Total_IDs(cp_cp_2_sparseID)
+        println("$(maximum(total_dict_IDs))")
         this_unitsize = local_assembly.sparse_unitsize = length(total_dict_IDs)
-        local_sparse_ids = findall(CUDA.ones(Bool, this_unitsize)) .+ last_sparse_ID
-
-        sorted_dict_IDs = GPUDict_GetID(cp_cp_2_sparseID, sort(cp_cp_2_sparseID.keys[total_dict_IDs]))
+        CUDA.@sync local_sparse_ids = findall(CUDA.ones(Bool, this_unitsize)) .+ last_sparse_ID
+        println("minimum ID = $(minimum(total_dict_IDs)), maximum ID = $(maximum(total_dict_IDs)), size = $(length(cp_cp_2_sparseID.keys))")
+        CUDA.@sync unsorted_keys = cp_cp_2_sparseID.keys[total_dict_IDs]
+        println("$(unsorted_keys[1:10])")
+        println("$(sizeof(cp_cp_2_sparseID.keys))")
+        CUDA.@sync sorted_dict_keys = sort!(unsorted_keys)
+        println("minimum ID = $(minimum(sorted_dict_keys)), maximum ID = $(maximum(sorted_dict_keys)), size = $(length(cp_cp_2_sparseID.sparseID))")
+        sorted_dict_IDs = GPUDict_GetID(cp_cp_2_sparseID, sorted_dict_keys)
+        # println("minimum ID = $(minimum(sorted_dict_IDs)), maximum ID = $(maximum(sorted_dict_IDs)), size = $(length(cp_cp_2_sparseID.sparseID))")
         cp_cp_2_sparseID.sparseID[sorted_dict_IDs] .= local_sparse_ids
 
         counter = 0
@@ -111,25 +117,31 @@ function assemble_SparseID(workpieces::Vector{WorkPiece}, globalfield::GlobalFie
                 sparse_IDs_by_el[i, j, elIDs] .= cp_cp_2_sparseID.sparseID[local_dict_IDs]
             end
         end
-        mesh.cp_cp_2_sparseID = cp_cp_2_sparseID
+        # mesh.cp_cp_2_sparseID = cp_cp_2_sparseID
         last_sparse_ID += length(local_assembly.sparse_mapping) * this_unitsize
+        push!(cp_cp_2_sparseID_dicts, cp_cp_2_sparseID)
     end
 
-    println("Allocating sparse matrix with size = ", last_sparse_ID * (3 * sizeof(FEM_Int) + 2 * sizeof(FEM_Float)), " bytes") #K_I, K_J, K_val_ids, K_linear, K_total
+    println("Allocating sparse matrix with size =  $(unitize(last_sparse_ID * (3 * sizeof(FEM_Int) + 2 * sizeof(FEM_Float)), DEFAULT_MEMORY_UNIT)) $DEFAULT_MEMORY_UNIT.") #K_I, K_J, K_val_ids, K_linear, K_total
     globalfield.K_I = CUDA.zeros(FEM_Int, last_sparse_ID)
     globalfield.K_J = CUDA.zeros(FEM_Int, last_sparse_ID)
-    assemble_KIJ(workpieces, globalfield)
+    assemble_KIJ(workpieces, globalfield, cp_cp_2_sparseID_dicts)
 
     globalfield.K_val_ids = sort_COO(length(globalfield.residue), globalfield.K_I, globalfield.K_J)
     globalfield.K_linear = CUDA.zeros(FEM_Float, last_sparse_ID)
     globalfield.K_total = CUDA.zeros(FEM_Float, last_sparse_ID)
+
+    println("Global K is allocated as a sparse maxtrix of $last_sparse_ID slots.")
+
+    println("Global field totally takes up $(report_memory(globalfield)), where the x and d takes $(unitize((3 * length(globalfield.x) + globalfield.basicfield_size) * sizeof(FEM_Float), DEFAULT_MEMORY_UNIT)) $DEFAULT_MEMORY_UNIT and the sparse K takes up $(unitize(last_sparse_ID * (3 * sizeof(FEM_Int) + 2 * sizeof(FEM_Float)), DEFAULT_MEMORY_UNIT)) $DEFAULT_MEMORY_UNIT.")
 end
 
-function assemble_KIJ(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
+function assemble_KIJ(workpieces::Vector{WorkPiece}, globalfield::GlobalField, cp_cp_2_sparseID_dicts::Vector{GPUDict})
     @Takeout (K_I, K_J) FROM globalfield
-    for wp in workpieces
+    for (wp, cp_cp_2_sparseID) in zip(workpieces, cp_cp_2_sparseID_dicts)
         @Takeout (sparse_entry_ID, sparse_unitsize, sparse_mapping) FROM wp.local_assembly
-        @Takeout (controlpoints, variable_size, cp_cp_2_sparseID) FROM wp.mesh
+        @Takeout (controlpoints, variable_size) FROM wp.mesh
+        # @Takeout (controlpoints, variable_size, cp_cp_2_sparseID) FROM wp.mesh
 
         for ((dual_pos, base_pos), sparse_unit_num) in collect(sparse_mapping)
             sparse_ID_shift = sparse_unit_num * sparse_unitsize

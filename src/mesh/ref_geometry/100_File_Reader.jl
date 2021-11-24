@@ -15,7 +15,7 @@ function read_Mesh(filename::String) #read coor and connection to form ref geome
     else
         error("Undefined file type")
     end
-    return (coors, connections) .|> cu
+    return (coors, connections) 
 end
 
 function read_NextLine(is_Comment, io) 

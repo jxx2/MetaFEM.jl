@@ -29,7 +29,7 @@ function make_Square(x::Tuple, n::Tuple, shape = :CUBE)
         # connections[:, el_2] .= cube_connections[[4, 2, 3], :] #twisted
     end
 
-    return (coors, connections) .|> cu
+    return (coors, connections) 
 end
 
 
@@ -74,5 +74,5 @@ function make_Brick(x::Tuple, n::Tuple, shape = :CUBE)
         connections[:, backward_el_ids .+ 3 * prod(n)] .= cube_connections[[4, 1, 3, 8], backward_el_ids]
         connections[:, backward_el_ids .+ 4 * prod(n)] .= cube_connections[[1, 3, 8, 6], backward_el_ids]
     end
-    return (coors, connections) .|> cu
+    return (coors, connections) 
 end

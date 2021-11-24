@@ -17,7 +17,7 @@ export make_Square, make_Brick
 export read_Mesh, construct_TotalMesh, get_BoundaryMesh
 
 # Symbolics
-export @Sym, @External_Sym, @Def, VARIABLE_ATTRIBUTES
+export @Sym, @External_Sym, @Def, visualize, VARIABLE_ATTRIBUTES
 export assign_WorkPiece_WeakForm, assign_Boundary_WeakForm
 
 # Assembly

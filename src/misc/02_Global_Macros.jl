@@ -119,12 +119,20 @@ const FEM_Int = Int32 #Note, hashing some GPU FEM_Int like indices may assume la
 # const FEM_Float = Float32
 const FEM_Float = Float64
 
+const MEMORY_UNIT = Dict{String, Int}(["B", "KB", "MB", "GB", "TB"] .=> [Int(1 << (10 * i)) for i = 0:4])
+DEFAULT_MEMORY_UNIT = "MB"
 ## Memory profiler, need to re polish for tables
-function estimate_msize(x::T, counter_func::Function) where T
-    msize = counter_func(x)
-    if isstructtype(T)
+function estimate_msize(x::T, budget::Integer, counter_func::Function) where T
+    msize = counter_func(x, budget)
+    if isa(x, Dict)
+        for dict_val in values(x)
+            msize += estimate_msize(dict_val, budget, counter_func)
+        end
+    elseif isa(x, AbstractArray)
+
+    elseif isstructtype(T) # T can't be an abstract array to avoid calculating the memory twice
         for fname in fieldnames(T)
-            msize += estimate_msize(getfield(x, fname), counter_func)
+            msize += estimate_msize(getfield(x, fname), budget, counter_func)
         end
     end
     return msize
@@ -135,5 +143,9 @@ CPU_sizeof(x, budget::Integer = 0) = sizeof(x)
 GPU_sizeof(x::T, budget::Integer = 0) where T <: CuArray = sizeof(x) + Base.elsize(T) * budget
 GPU_sizeof(x, budget::Integer = 0) = 0 
 
-estimate_memory_CPU(x, budget::Integer = 0) = estimate_msize(x, t -> CPU_sizeof(t, budget))
-estimate_memory_GPU(x, budget::Integer = 0) = estimate_msize(x, t -> GPU_sizeof(t, budget))
+estimate_memory_CPU(x, budget::Integer = 0) = estimate_msize(x, budget, CPU_sizeof) 
+estimate_memory_GPU(x, budget::Integer = 0) = estimate_msize(x, budget, GPU_sizeof)
+
+unitize(x, unit::String) = x / MEMORY_UNIT[unit]
+report_memory(x, unit::String) = string("$(unitize(estimate_memory_CPU(x), unit)) $unit CPU memory and $(unitize(estimate_memory_GPU(x), unit)) $unit GPU memory")
+report_memory(x) = report_memory(x, DEFAULT_MEMORY_UNIT)

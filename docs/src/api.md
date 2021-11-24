@@ -35,6 +35,7 @@ The APIs to define the physics are pretty straightforward:
     @Sym
     @Def
     assign_Boundary_WeakForm
+    visualize
 ```
 The internal mechanism is different from the classical approaches and worth mentioning: The expressions will go through symbolic rewriting
 with [rewriting rules](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/101_Simplify_Rule.jl), enabling customizations.

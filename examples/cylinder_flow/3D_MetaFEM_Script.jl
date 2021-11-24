@@ -82,6 +82,11 @@ for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
 assemble_Global_Variables(fem_domain = fem_domain)
+MetaFEM.assemble_X(fem_domain.workpieces, fem_domain.globalfield)
+##
+fem_domain.globalfield.x
+##
+MetaFEM.assemble_SparseID(fem_domain.workpieces, fem_domain.globalfield)
 #------------------------------
 ## Run!
 #------------------------------

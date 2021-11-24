@@ -22,6 +22,7 @@ If applicable, the IDs are in order, e.g., segment IDs in a face are clockwise/c
 The function returns either a `Geo_TotalMesh2D` with attributes (`vertices`, `segments`, `faces`) or a 
 `Geo_TotalMesh3D` with attributes (`vertices`, `segments`, `faces`, `blocks`).
 """
+construct_TotalMesh(coors::AbstractArray, connections::AbstractArray) = construct_TotalMesh(cu(coors), cu(connections))
 function construct_TotalMesh(coors::CuArray, connections::CuArray)
     dim, _ = size(coors)
     if dim == 2 
@@ -82,6 +83,7 @@ function construct_TotalMesh_2D(coors::CuArray, connection::CuArray)
         segments.vertex_IDs[1, local_sIDs] .= max_vIDs
         segments.vertex_IDs[2, local_sIDs] .= next_vIDs
     end
+    println("2D geometry constructed with $(length(vIDs)) vertices and $(length(fIDs)) faces, taking $(report_memory(ref_geometry))")
     return ref_geometry
 end
 
@@ -187,6 +189,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
             next_sIDs = f_sIDs[CartesianIndex.(next_pos, last_dim_ids)]
         end
     end
+    println("3D geometry constructed with $(length(vIDs)) vertices and $(length(bIDs)) blocks, taking $(report_memory(ref_geometry))")
     return ref_geometry
 end
 

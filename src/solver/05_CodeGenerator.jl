@@ -264,7 +264,7 @@ The function generates `fem_domain`.`K_linear_func` and `fem_domain`.`K_nonlinea
 The input `domain_ID` is only used to generate the function name.
 """
 function compile_Updater_GPU(; domain_ID::Integer, fem_domain::FEM_Domain)
-    linear_func_name = Symbol("update_K_Linear_", "domain_ID")
+    linear_func_name = Symbol("update_K_Linear_", domain_ID)
     linear_func_body = :(
     function ($linear_func_name)(time_discretization::GeneralAlpha; fem_domain::FEM_Domain)
         @Takeout (workpieces, globalfield) FROM fem_domain

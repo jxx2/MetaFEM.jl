@@ -4,7 +4,7 @@ abstract type Abstract_Table end
 get_Data(s::Abstract_Table) = getfield(s, :data)
 Base.getproperty(s::Abstract_Table, key::Symbol) = get_Data(s)[key]
 Base.setproperty!(s::Abstract_Table, key::Symbol, value) = setindex!(get_Data(s), value, key)
-volumeof(s::Abstract_Table) = sum([sizeof(item) for item in values(get_Data(s))])
+# volumeof(s::Abstract_Table) = sum([sizeof(item) for item in values(get_Data(s))])
 
 struct GPUTable <: Abstract_Table
     data::Dict{Symbol, CuArray}

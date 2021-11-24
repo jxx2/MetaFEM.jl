@@ -35,8 +35,8 @@ makedocs(
     strict = false,
     pages = Any[
         "Home" => "index.md",
-        "APIs" => "api.md",
         "Examples" => SEQUENCED_MD_FILES,
+        "APIs" => "api.md",
         ],
 )
 ##

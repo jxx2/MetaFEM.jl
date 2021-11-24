@@ -19,6 +19,12 @@ function update_Symbolic_Word_Name(base_variable::Symbol, td_order::Integer, c_i
     end
     return string(full_name_container...)
 end
+
+"""
+    visualize(x::Union{SymbolicWord, SymbolicTerm, SubtermVariable, FunctionVariable, RewritingRule, Symbolic_BilinearForm, Symbolic_WeakForm})
+
+Print the expressions.
+"""
 visualize(x::SymbolicWord) =  update_Symbolic_Word_Name(x.base_variable, x.td_order, x.c_ids, x.sd_ids)
 
 function update_Term_Name(operation::Symbol, substrings::Vector)
@@ -38,3 +44,6 @@ visualize(x::FunctionVariable) =  update_Term_Name(x.operation, collect(visualiz
 visualize(x::RewritingRule) = string(visualize(x.structure_to_match), " => ", visualize(x.structure_to_produce))
 visualize(x::Symbolic_BilinearForm) = string("(", visualize(x.dual_term), ", ", visualize(x.base_term), ")")
 visualize(x::Symbolic_WeakForm) = join(visualize.(x.bilinear_forms), " + ")
+
+Base.show(io::IO, x::Union{SymbolicWord, SymbolicTerm, SubtermVariable, FunctionVariable, RewritingRule, Symbolic_BilinearForm, Symbolic_WeakForm}) = 
+print(io, visualize(x))
