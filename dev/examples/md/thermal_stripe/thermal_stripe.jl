@@ -70,30 +70,22 @@ cpts.s[cp_IDs] .= 0.
 update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
 dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
 
-using CairoMakie, Colors
+using Plots
 
 mid_cp_IDs = (cpts.x1 .> L1/2 - 0.1 * Δx) .& (cpts.x1 .< L1/2 + 0.1 * Δx)
 num_ys = cpts.x2[mid_cp_IDs] |> collect
 num_Ts = cpts.T[mid_cp_IDs] |> collect
+ids = sortperm(num_ys)
 
 y_sample = [0.0001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.0099] # Sampled from FEATool result
 T_sample = [1086.84,  1086,  1082.73,  1077.63,  1070.24,  1060.78,  1048.83,  1034.63,  1017.81,  998.843,  979.249]
 
-fig = Figure(resolution = (1000, 600))
-ax1 = fig[1, 1] = Axis(fig)
-fontsize = 20
-
-plot_sam = scatter!(ax1, y_sample, T_sample, markersize = 10px)
-plot_num = scatter!(ax1, num_ys, num_Ts, markersize = 6px, color =:salmon)
-ax1.title = "Temperature along the middle line x = 1 cm"
-ax1.titlesize = fontsize
-ax1.xticks = 0.:0.002:0.01
-ax1.xlabel = "y(m)"
-ax1.ylabel = "T(K)"
-ax1.xlabelsize = fontsize
-ax1.ylabelsize = fontsize
-Legend(fig, [plot_sam, plot_num], ["FEATool", "MetaFEM"], labelsize = fontsize, bbox = (750, 950, 450, 550))
-display(fig)
+using Plots
+fig = plot(; size=(800,800), title = "Temperature along the middle line x = 1 cm", xticks = 0.:0.002:0.01, xlabel = "y(m)", ylabel = "T(K)" )
+scatter!(fig, y_sample, T_sample, markershape = :rect, markersize = 6, color = RGBA(1, 0, 0, 1), label = "FEATool")
+plot!(fig, num_ys[ids], num_Ts[ids], markershape = :circle, markersize = 3, color = RGBA(0, 0.5, 0.5, 1), markercolor = RGBA(0, 0.5, 0.5, 1), label = "MetaFEM")
+fig.subplots[1].attr[:legend_position] = (0.8, 0.9)
+png(fig, joinpath(@__DIR__, "2D_Thermal_Middle_Line_Plots.png"))
 
 wp = fem_domain.workpieces[1]
 write_VTK(string(@__DIR__, "\\", "2D_Ceramic_Strip.vtk"), wp)

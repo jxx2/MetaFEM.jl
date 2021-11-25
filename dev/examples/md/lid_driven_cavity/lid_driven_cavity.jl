@@ -122,32 +122,18 @@ for Re in Re_arr
     push!(exp_ys, collect(file_data.y))
 end
 
-using CSV, DataFrames
-using CairoMakie, Colors
-fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
-ax1 = fig[1, 1] = Axis(fig, title = "Horizontal Velocity on Line x = 0.5",
-                    xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = "Normalized U₁", ylabel = "y")
-fontsize = 24
-ax1.titlesize = fontsize
-ax1.xlabelsize = fontsize
-ax1.ylabelsize = fontsize
-
-exp_plots, num_plots = [], []
+using Plots
+fig = plot(; size=(800,800), title = "Horizontal Velocity on Line x = 0.5", xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = "Normalized U₁", ylabel = "y")
 for i = 1:length(Re_arr)
     color_val = (i / length(Re_arr) + 1) / 2
     ids = sortperm(num_y)
-    exp_plot = scatter!(ax1, exp_us[i], exp_ys[i], marker = '■', markersize = 10px, color = RGBf0(color_val, 0, 0))
-    num_plot = scatterlines!(num_us[i][ids], num_y[ids], marker = :circle, markersize = 5px, color = RGBf0(0, 0.5, color_val), markercolor = RGBf0(0, 0.5, color_val))
 
-    push!(exp_plots, exp_plot)
-    push!(num_plots, num_plot)
+    scatter!(fig, exp_us[i], exp_ys[i], markershape = :rect, markersize = 6, color = RGBA(color_val, 0, 0, 1), label = string("Re $(Re_arr[i]), Ghia"))
+    plot!(fig, num_us[i][ids], num_y[ids], markershape = :circle, markersize = 3, color = RGBA(0, 0.5, color_val, 1), markercolor = RGBA(0, 0.5, color_val, 1), label = string("Re $(Re_arr[i]), MetaFEM"))
 end
-exp_plot_names = (x -> string("Re", x, ", Ghia")).(Re_arr)
-num_plot_names = (x -> string("Re", x, ", MetaFEM")).(Re_arr)
-Legend(fig, [exp_plots..., num_plots...], [exp_plot_names..., num_plot_names...], bbox = (700, 900, 200, 600), labelsize = fontsize)
-display(fig)
+fig.subplots[1].attr[:legend_position] = (0.7, 0.3)
 
-save(joinpath(@__DIR__, "2D_Ux.png"), fig)
+png(fig, joinpath(@__DIR__, "2D_Ux_Plots.png"))
 
 fem_domain.linear_solver = solver_LU_CPU
 fem_domain.globalfield.converge_tol = 1e-5
