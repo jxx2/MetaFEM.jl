@@ -31,9 +31,9 @@ function assemble_Global_Variables(; fem_domain::FEM_Domain)
 
     println("Global field x and d allocated with basic DOF = $basicfield_size, global DOF = $globalfield_size.")
 
-    # assemble_X(workpieces, globalfield)
+    assemble_X(workpieces, globalfield)
 
-    # assemble_SparseID(workpieces, globalfield)
+    assemble_SparseID(workpieces, globalfield)
 end
 
 function assemble_X(workpieces::Vector{WorkPiece}, globalfield::GlobalField)
@@ -95,18 +95,11 @@ function assemble_SparseID(workpieces::Vector{WorkPiece}, globalfield::GlobalFie
         end
         GPUDict_SetID(cp_cp_2_sparseID, cp_cp_keys)
 
-        CUDA.@sync  total_dict_IDs = get_Total_IDs(cp_cp_2_sparseID)
-        println("$(maximum(total_dict_IDs))")
+        total_dict_IDs = get_Total_IDs(cp_cp_2_sparseID)
         this_unitsize = local_assembly.sparse_unitsize = length(total_dict_IDs)
-        CUDA.@sync local_sparse_ids = findall(CUDA.ones(Bool, this_unitsize)) .+ last_sparse_ID
-        println("minimum ID = $(minimum(total_dict_IDs)), maximum ID = $(maximum(total_dict_IDs)), size = $(length(cp_cp_2_sparseID.keys))")
-        CUDA.@sync unsorted_keys = cp_cp_2_sparseID.keys[total_dict_IDs]
-        println("$(unsorted_keys[1:10])")
-        println("$(sizeof(cp_cp_2_sparseID.keys))")
-        CUDA.@sync sorted_dict_keys = sort!(unsorted_keys)
-        println("minimum ID = $(minimum(sorted_dict_keys)), maximum ID = $(maximum(sorted_dict_keys)), size = $(length(cp_cp_2_sparseID.sparseID))")
-        sorted_dict_IDs = GPUDict_GetID(cp_cp_2_sparseID, sorted_dict_keys)
-        # println("minimum ID = $(minimum(sorted_dict_IDs)), maximum ID = $(maximum(sorted_dict_IDs)), size = $(length(cp_cp_2_sparseID.sparseID))")
+        local_sparse_ids = findall(CUDA.ones(Bool, this_unitsize)) .+ last_sparse_ID
+        unsorted_keys = cp_cp_2_sparseID.keys[total_dict_IDs]
+        sorted_dict_IDs = GPUDict_GetID(cp_cp_2_sparseID, sort!(unsorted_keys))
         cp_cp_2_sparseID.sparseID[sorted_dict_IDs] .= local_sparse_ids
 
         counter = 0
@@ -146,7 +139,7 @@ function assemble_KIJ(workpieces::Vector{WorkPiece}, globalfield::GlobalField, c
         for ((dual_pos, base_pos), sparse_unit_num) in collect(sparse_mapping)
             sparse_ID_shift = sparse_unit_num * sparse_unitsize
             cpID_shift = (dual_pos, base_pos) .* variable_size #More clear to expand explicitly
-            CUDA.@sync @Dumb_CUDA_Batch 256 _assemble_KIJ(cpID_shift, sparse_ID_shift, K_I, K_J, cp_cp_2_sparseID.keys, cp_cp_2_sparseID.sparseID)
+            @Dumb_CUDA_Batch 256 _assemble_KIJ(cpID_shift, sparse_ID_shift, K_I, K_J, cp_cp_2_sparseID.keys, cp_cp_2_sparseID.sparseID)
         end
     end
 end

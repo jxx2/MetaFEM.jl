@@ -23,11 +23,13 @@ function gen_BasicDomain_Funcs(dim::Integer)
         end
         # integral_vals[:, :, ($ID_for_no_diff)..., elIDs] .= ref_itp_vals[:, :, ($ID_for_no_diff)...]
         integral_vals[:, :, $(ID_for_no_diff...), elIDs] .= ref_itp_vals[:, :, $(ID_for_no_diff...)]
-        CUDA.@sync @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, dets, inverse_jacobian, elIDs)
+        @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, dets, inverse_jacobian, elIDs)
 
-        CUDA.@sync @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, ref_itp_vals, inverse_jacobian, elIDs)
+        @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, ref_itp_vals, inverse_jacobian, elIDs)
 
-        integral_weights .= itg_weight .* dets
+        # integral_weights .= (itg_weight .* dets)
+        integral_weights .= itg_weight
+        integral_weights .*= dets
     end)
     return ex
 end
@@ -63,11 +65,11 @@ function gen_BasicBoundary_Funcs(dim::Integer)
                 $jac_block
             end
             integral_vals[:, :, ($ID_for_no_diff)..., facet_IDs] .= bdy_ref_itp_vals[eindex][:, :, ($ID_for_no_diff)...]
-            CUDA.@sync @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, el_dets, inverse_jacobian, facet_IDs) #Note this dets do not make sense
-            CUDA.@sync @Dumb_CUDA_Batch 256 $tangent_kernel(jacobian, tangent_directions, bdy_tangent_directions[eindex], facet_IDs)
-            CUDA.@sync @Dumb_CUDA_Batch 256 $normal_kernel(normal_directions, tangent_directions, bdy_dets, facet_IDs)
+            @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, el_dets, inverse_jacobian, facet_IDs) #Note this dets do not make sense
+            @Dumb_CUDA_Batch 256 $tangent_kernel(jacobian, tangent_directions, bdy_tangent_directions[eindex], facet_IDs)
+            @Dumb_CUDA_Batch 256 $normal_kernel(normal_directions, tangent_directions, bdy_dets, facet_IDs)
 
-            CUDA.@sync @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, bdy_ref_itp_vals[eindex], inverse_jacobian, facet_IDs)
+            @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, bdy_ref_itp_vals[eindex], inverse_jacobian, facet_IDs)
 
             integral_weights[:, facet_IDs] .= bdy_itg_weights[eindex] .* bdy_dets[:, facet_IDs]
         end

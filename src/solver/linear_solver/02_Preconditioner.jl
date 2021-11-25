@@ -19,7 +19,7 @@ function precondition_CUDA_Jacobi(A::CuSparseMatrixCSR{T}) where T
     Ks = A.nzVal
 
     jac_vec = CUDA.ones(T, size(A, 2))
-    CUDA.@sync @Dumb_CUDA_Batch 256 find_Jac_Preconditioner(J_ptr, Js, Ks, jac_vec)
+    @Dumb_CUDA_Batch 256 find_Jac_Preconditioner(J_ptr, Js, Ks, jac_vec)
     return CUDA_Jacobi(jac_vec)
 end
 

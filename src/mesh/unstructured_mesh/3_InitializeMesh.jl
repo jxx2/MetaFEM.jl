@@ -31,7 +31,7 @@ function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discreti
 
     cp_per_segment, segment_per_element = size(segment_cp_ids)
     for j = 1:segment_per_element
-        CUDA.@sync @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), segment_facet_IDs, faces.segment_IDs, facets.element_ID, facets.element_eindex, facets.outer_element_ID, 
+        @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), segment_facet_IDs, faces.segment_IDs, facets.element_ID, facets.element_eindex, facets.outer_element_ID, 
         facets.outer_element_eindex, elIDs)
     end
 
@@ -127,7 +127,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
 
     cp_per_face, face_per_element = size(face_cp_ids)
     for j = 1:face_per_element
-        CUDA.@sync @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), face_facet_IDs, blocks.face_IDs, facets.element_ID, facets.element_eindex, 
+        @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), face_facet_IDs, blocks.face_IDs, facets.element_ID, facets.element_eindex, 
         facets.outer_element_ID, facets.outer_element_eindex, elIDs)
     end
     

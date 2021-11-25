@@ -1,4 +1,4 @@
-const BATCH_SIZE = 8
+const BATCH_SIZE = 256
 
 abstract type Abstract_Table end
 get_Data(s::Abstract_Table) = getfield(s, :data)
@@ -45,7 +45,7 @@ function allocate_by_length!(s::GPUTable, allocating_number::Integer; batchsize:
     available_length = sum(.~(s.is_occupied))
     allocating_number > available_length && extend!(s, FEM_Int(ceil((allocating_number - available_length) / batchsize) * batchsize))
 
-    CUDA.@sync available_IDs = available(s)
+    available_IDs = available(s)
     allocating_IDs = available_IDs[1:allocating_number]
     s.is_occupied[allocating_IDs] .= true
     return allocating_IDs

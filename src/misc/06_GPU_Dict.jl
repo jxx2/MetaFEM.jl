@@ -195,7 +195,7 @@ function GPUDict_DelID(source_dict::GPUDict, del_keys::CuVector{UInt64})
     is_deleted = CUDA.zeros(Bool, length(keys))
     is_deleted[del_IDs] .= true
     #del_vals = vals[del_IDs]
-    CUDA.@sync @Dumb_CUDA_Batch 256 dict_DelID_Reconnect(keys, hashs, hash_init, hash_prev, hash_next, is_deleted)
+    @Dumb_CUDA_Batch 256 dict_DelID_Reconnect(keys, hashs, hash_init, hash_prev, hash_next, is_deleted)
     keys[del_IDs] .= UInt64(0)
     hashs[del_IDs] .= UInt64(0)
     hash_prev[del_IDs] .= Int32(0)

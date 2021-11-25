@@ -268,7 +268,7 @@ function get_BoundaryMesh(total_mesh::Geo_TotalMesh2D)
     @Takeout (segments, faces) FROM total_mesh
     f_el_num = CUDA.zeros(FEM_Int, length(segments.is_occupied))
     elIDs = findall(faces.is_occupied)
-    CUDA.@sync @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(faces.segment_IDs[:, elIDs]))
+    @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(faces.segment_IDs[:, elIDs]))
     return findall(f_el_num .== 1)
 end
 
@@ -276,7 +276,7 @@ function get_BoundaryMesh(total_mesh::Geo_TotalMesh3D)
     @Takeout (faces, blocks) FROM total_mesh
     f_el_num = CUDA.zeros(FEM_Int, length(faces.is_occupied))
     elIDs = findall(blocks.is_occupied)
-    CUDA.@sync @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(blocks.face_IDs[:, elIDs]))
+    @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(blocks.face_IDs[:, elIDs]))
     return findall(f_el_num .== 1)
 end
 
