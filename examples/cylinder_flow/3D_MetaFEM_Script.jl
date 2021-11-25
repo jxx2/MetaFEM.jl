@@ -104,15 +104,6 @@ controlpoints.τᵐ[cp_IDs] .= (9 * 16 * ν ^ 2 * dim * Δx ^ (-4)) ^ (-0.5)
 controlpoints.τᶜ[cp_IDs] .= (controlpoints.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
 update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
 dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
-##
-tmax = 1
-for i = 1:tmax
-    dt = fem_domain.time_discretization.dt = 0.2 * Δx / Um
-    controlpoints.τᵐ[cp_IDs] .= (9 * 16 * ν ^ 2 * dim * Δx ^ (-4)) ^ (-0.5)
-    controlpoints.τᶜ[cp_IDs] .= (controlpoints.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
-    update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
-    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
-end
 #------------------------------
 ## Vtk
 #------------------------------
