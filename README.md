@@ -14,7 +14,7 @@ Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.
 Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev/examples/md/pikachu/pikachu/) and [sources](https://github.com/jxx2/MetaFEM/tree/main/examples), where "*.jl" files are the main scripts. 
 
 ## Known Issue(s):
-1. We observed: when multiple examples are run in sequence, there can be a specific repeatable crash with the message "an illegal memory access was encountered (code 700, ERROR_ILLEGAL_ADDRESS)" for each specific machine (or maybe each different GPU memory size). Manually reclaim memory, e.g.,
+1. We observed: when multiple examples are run in sequence, there can be a specific repeatable crash with the message "an illegal memory access was encountered (code 700, ERROR_ILLEGAL_ADDRESS)" for each specific machine (or maybe each different GPU memory size). Manually reclaiming memory, e.g.,
 ```julia
 MetaFEM.GC.gc(true)
 MetaFEM.CUDA.reclaim()
