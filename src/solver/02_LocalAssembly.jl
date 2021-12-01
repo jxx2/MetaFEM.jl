@@ -17,16 +17,17 @@ construct_ExtervarInfo(dim::Integer, source::SymbolicWord) =
 function construct_AssembleTerm(dim::Integer, source::GroundTerm, bvar_mapping::Dict{Symbol, FEM_Int})
     innervar_words, extervar_words = source |> extract_Words |> classify_Words
     ex = parse_Term2Expr(dim, source)
-    innervar_infos = construct_InnervarInfo.(dim, innervar_words, Ref(bvar_mapping))
+    innervar_infos = InnervarInfo[construct_InnervarInfo(dim, source, bvar_mapping) for source in innervar_words]
     extervar_infos = construct_ExtervarInfo.(dim, extervar_words)
     return @Construct AssembleTerm
 end
 
 function diff_AssembleTerm(dim::Integer, source::GroundTerm, bvar_mapping::Dict{Symbol, FEM_Int})
     innervar_words, extervar_words = source |> extract_Words |> classify_Words
-    diff_terms = do_SymbolicDiff.(Ref(source), innervar_words)
-    innervar_infos = construct_InnervarInfo.(dim, innervar_words, Ref(bvar_mapping))
-    return construct_AssembleTerm.(dim, diff_terms, Ref(bvar_mapping)), innervar_infos
+    # diff_terms = do_SymbolicDiff.(Ref(source), innervar_words)
+    diff_terms = [do_SymbolicDiff(source, word) for word in innervar_words]
+    innervar_infos = InnervarInfo[construct_InnervarInfo(dim, source, bvar_mapping) for source in innervar_words]
+    return AssembleTerm[construct_AssembleTerm(dim, source, bvar_mapping) for source in diff_terms], innervar_infos
 end
 
 function construct_AssembleBilinear(dim::Integer, source::Symbolic_BilinearForm, bvar_mapping::Dict{Symbol, FEM_Int})
@@ -37,7 +38,8 @@ function construct_AssembleBilinear(dim::Integer, source::Symbolic_BilinearForm,
     residue_bilinear = AssembleBilinear(residue_dual_info, residue_base_term, tuple(:nothing, 0, (), 0))
 
     diff_base_terms, innervar_infos = diff_AssembleTerm(dim, base_term, bvar_mapping)
-    gradient_bilinears = AssembleBilinear.(Ref(residue_dual_info), diff_base_terms, innervar_infos)
+    # gradient_bilinears = AssembleBilinear.(Ref(residue_dual_info), diff_base_terms, innervar_infos)
+    gradient_bilinears = [AssembleBilinear(residue_dual_info, x, y) for (x, y) in zip(diff_base_terms, innervar_infos)] 
     return residue_bilinear, gradient_bilinears
 end
 
@@ -54,7 +56,8 @@ function get_ExterVars(bilinears::Vector{AssembleBilinear})
 end
 
 function construct_AssembleWeakform(dim::Integer, source::Symbolic_WeakForm, bvar_mapping::Dict{Symbol, FEM_Int})
-    bilinears = construct_AssembleBilinear.(dim, source.bilinear_forms, Ref(bvar_mapping))
+    # bilinears = construct_AssembleBilinear.(dim, source.bilinear_forms, Ref(bvar_mapping))
+    bilinears = [construct_AssembleBilinear(dim, form, bvar_mapping) for form in source.bilinear_forms ]
     residues = getindex.(bilinears, 1)
     gradients = vcat((getindex.(bilinears, 2))...)
 
