@@ -1,8 +1,10 @@
+typed_Union(::Type{T}, a) where T = isempty(a) ? T[] : union(a...)
+
 extract_Words(source::Number) = SymbolicWord[]
 extract_Words(source::SymbolicWord) = [source]
-extract_Words(source::SymbolicTerm) = union(extract_Words.(source.subterms)...)
+extract_Words(source::SymbolicTerm) = typed_Union(SymbolicWord, extract_Words.(source.subterms))
 extract_Words(source::Symbolic_BilinearForm) = extract_Words(source.base_term)
-extract_Words(source::Symbolic_WeakForm) = union(extract_Words.(source.bilinear_forms)...)
+extract_Words(source::Symbolic_WeakForm) = typed_Union(SymbolicWord, extract_Words.(source.bilinear_forms))
 
 function classify_Words(words::Vector{SymbolicWord})
     is_extervar = map(x -> :EXTERNAL_VAR in VARIABLE_ATTRIBUTES[word_To_SymType(x)], words)
@@ -38,7 +40,6 @@ function construct_AssembleBilinear(dim::Integer, source::Symbolic_BilinearForm,
     residue_bilinear = AssembleBilinear(residue_dual_info, residue_base_term, tuple(:nothing, 0, (), 0))
 
     diff_base_terms, innervar_infos = diff_AssembleTerm(dim, base_term, bvar_mapping)
-    # gradient_bilinears = AssembleBilinear.(Ref(residue_dual_info), diff_base_terms, innervar_infos)
     gradient_bilinears = [AssembleBilinear(residue_dual_info, x, y) for (x, y) in zip(diff_base_terms, innervar_infos)] 
     return residue_bilinear, gradient_bilinears
 end
@@ -46,18 +47,11 @@ end
 is_Linear(this_bilinear::AssembleBilinear) = isempty(this_bilinear.base_term.innervar_infos)
 is_NonLinear(this_bilinear::AssembleBilinear) = ~isempty(this_bilinear.base_term.innervar_infos)
 
-function get_InnerVars(bilinears::Vector{AssembleBilinear})
-    vars = getfield.(getfield.(bilinears, :base_term), :innervar_infos)
-    return isempty(vars) ? InnervarInfo[] : union(vars...)
-end
-function get_ExterVars(bilinears::Vector{AssembleBilinear})
-    vars = getfield.(getfield.(bilinears, :base_term), :extervar_infos)
-    return isempty(vars) ? ExtervarInfo[] : union(vars...)
-end
+get_InnerVars(bilinears::Vector{AssembleBilinear}) = typed_Union(InnervarInfo, getfield.(getfield.(bilinears, :base_term), :innervar_infos))
+get_ExterVars(bilinears::Vector{AssembleBilinear}) = typed_Union(ExtervarInfo, getfield.(getfield.(bilinears, :base_term), :extervar_infos))
 
 function construct_AssembleWeakform(dim::Integer, source::Symbolic_WeakForm, bvar_mapping::Dict{Symbol, FEM_Int})
-    # bilinears = construct_AssembleBilinear.(dim, source.bilinear_forms, Ref(bvar_mapping))
-    bilinears = [construct_AssembleBilinear(dim, form, bvar_mapping) for form in source.bilinear_forms ]
+    bilinears = [construct_AssembleBilinear(dim, form, bvar_mapping) for form in source.bilinear_forms]
     residues = getindex.(bilinears, 1)
     gradients = vcat((getindex.(bilinears, 2))...)
 
@@ -80,23 +74,18 @@ end
 get_SparsePos(wf::AssembleWeakform) = wf.gradID_by_pos |> keys |> collect
 
 """
-    initialize_LocalAssembly(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9)
-    initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; explicit_max_sd_order::Integer = 9)
+    initialize_LocalAssembly!(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9)
+    initialize_LocalAssembly!(dim::Integer, workpieces::Vector{WorkPiece}; explicit_max_sd_order::Integer = 9)
 
 This function preprocesses/reorganizes the weakforms. The input `explicit_max_sd_order` is the exposed API for 
 explicitly limit high order spatial derivative.
 """
-function initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; explicit_max_sd_order::Integer = 9)
+function initialize_LocalAssembly!(dim::Integer, workpieces::Vector; explicit_max_sd_order::Integer = 9)
     for wp in workpieces
         @Takeout (extra_var, domain_weakform, boundary_weakform_pairs) FROM wp.physics
 
         domain_words = extract_Words(domain_weakform)
-        if isempty(boundary_weakform_pairs) #In rare case there may be no boundary
-            total_words = domain_words
-        else
-            boundary_words = union((boundary_weakform_pairs |> values .|> extract_Words)...)
-            total_words = union(domain_words, boundary_words)
-        end
+        total_words = union(domain_words, extract_Words.(values(boundary_weakform_pairs))...)
 
         sd_orders = (x -> length(x.sd_ids)).(total_words) |> maximum
         max_sd_order = isempty(sd_orders) ? 1 : maximum(sd_orders)
@@ -116,12 +105,12 @@ function initialize_LocalAssembly(dim::Integer, workpieces::Vector{WorkPiece}; e
         sparse_entry_ID, sparse_unitsize = (0, 0) .|> FEM_Int
         parse_poses = union(get_SparsePos(assembled_weakform), (assembled_boundary_weakform_pairs |> values |> collect .|> get_SparsePos)...) |> sort
         sparse_mapping = Dict(parse_pose => (i - 1) for (i, parse_pose) in enumerate(sort(parse_poses)))
-        # local_asm, max_sd_order = construct_LocalAssembly(wp)
+
         wp.local_assembly = @Construct FEM_LocalAssembly
         wp.max_sd_order = min(max_sd_order, explicit_max_sd_order)
     end
 end
-initialize_LocalAssembly(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9) = initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order)
+initialize_LocalAssembly!(fem_domain::FEM_Domain; explicit_max_sd_order::Integer = 9) = initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order)
 
 get_MaxTimeSteps(local_asm::FEM_LocalAssembly) = getindex.(local_asm.local_innervar_infos, 3) |> maximum
 get_MaxTimeSteps(wp::WorkPiece) = get_MaxTimeSteps(wp.local_assembly)

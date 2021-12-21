@@ -25,7 +25,7 @@ for foldername in readdir(EXAMPLE_SRC_DIR)
     # Literate.notebook(input, md_folder, execute = false)
 end
 
-SEQUENCED_MD_FILES = [joinpath("examples", "md", foldername, string(foldername, ".md")) for foldername in ["pikachu", 
+SEQUENCED_MD_FILES = [joinpath("examples", "md", foldername, string(foldername, ".md")) for foldername in ["pikachu", "pikachu_dynamics",
 "thermal_stripe", "cantilever", "stress_concentration", "cylinderflow", "lid_driven_cavity"]]
 
 makedocs(

@@ -27,10 +27,10 @@ function read_MPHTXT(io)
             element_num = parse(Int, line_data[1])
 
             first_connection = parse.(FEM_Int, collect_Vec_MPHTXT(read_NextLine(is_Comment_MPHTXT, io)))
-            connection = mesh_data[:connection] = zeros(FEM_Float, length(first_connection), element_num)
-            connection[:, 1] .= first_connection 
+            connections = mesh_data[:connections] = zeros(FEM_Float, length(first_connection), element_num)
+            connections[:, 1] .= first_connection 
             for i = 2:element_num
-                connection[:, i] .= parse.(FEM_Int, collect_Vec_MPHTXT(read_NextLine(is_Comment_MPHTXT, io)))
+                connections[:, i] .= parse.(FEM_Int, collect_Vec_MPHTXT(read_NextLine(is_Comment_MPHTXT, io)))
             end
 
             println("Read ", "Element")
@@ -38,6 +38,6 @@ function read_MPHTXT(io)
         end
 
         prod(flags) || continue
-        return mesh_data[:coors], mesh_data[:connection] .- (mesh_data[:start_vid] - 1)
+        return mesh_data[:coors], mesh_data[:connections] .- (mesh_data[:start_vid] - 1)
     end
 end

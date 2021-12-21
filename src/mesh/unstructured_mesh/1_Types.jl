@@ -1,3 +1,4 @@
+using Base: UInt32
 mutable struct Basic_ControlPoint2D 
     x1::FEM_Float
     x2::FEM_Float
@@ -52,13 +53,11 @@ mutable struct Basic_Element
     dets::Vector{FEM_Float}
 end
 
-mutable struct Basic_WP_Mesh <: FEM_WP_Mesh
-    controlpoints::GPUTable
-    facets::GPUTable #boundaries 
-    elements::GPUTable
-    # cp_pos_2_el_pos::GPUDict
-    # cp_cp_2_sparseID::GPUDict
+mutable struct Basic_WP_Mesh{ArrayType} <: FEM_WP_Mesh{ArrayType}
+    controlpoints::FEM_Table{ArrayType}
+    facets::FEM_Table{ArrayType} #boundaries 
+    elements::FEM_Table{ArrayType}
 
-    bg_fIDs::Dict{FEM_Int, CuVector{FEM_Int}}
+    bg_fIDs::Dict{FEM_Int, AbstractArray{FEM_Int, 1}}
     variable_size::FEM_Int
 end

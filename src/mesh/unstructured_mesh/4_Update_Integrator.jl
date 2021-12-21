@@ -5,13 +5,13 @@ function gen_BasicDomain_Funcs(dim::Integer)
         X_IDs = ntuple(x -> x == X_dim ? 2 : 1, $dim)
     end)
     for this_dim = 1:dim
-        x_sym = Symbol(string("x", this_dim))
+        x_sym = Symbol("x$(this_dim)")
         push!(jac_block.args, :(jacobian[$this_dim, X_dim, :, elIDs] .= ref_itp_vals[:, :, X_IDs...] * controlpoints.$x_sym[cpIDs]))
     end
 
-    invJac_kernel = Symbol(string("inv_Jac_", dim, "D"))
-    kernel_libs = Symbol(string("BASE_KERNELS_", dim, "D"))
-    func = Symbol(string("update_BasicElements_", dim, "D"))
+    invJac_kernel = Symbol("inv_Jac_$(dim)D")
+    kernel_libs = Symbol("BASE_KERNELS_$(dim)D")
+    func = Symbol("update_BasicElements_$(dim)D")
     ex = :(function ($func)(mesh::FEM_WP_Mesh, this_space::Classical_Discretization, itpval_kernel::Function)
         @Takeout (controlpoints, elements) FROM mesh
         @Takeout (controlpoint_IDs, jacobian, inverse_jacobian, dets, integral_vals, integral_weights, is_occupied) FROM elements
@@ -21,15 +21,13 @@ function gen_BasicDomain_Funcs(dim::Integer)
         for X_dim = 1:$dim
             $jac_block
         end
-        # integral_vals[:, :, ($ID_for_no_diff)..., elIDs] .= ref_itp_vals[:, :, ($ID_for_no_diff)...]
+
         integral_vals[:, :, $(ID_for_no_diff...), elIDs] .= ref_itp_vals[:, :, $(ID_for_no_diff...)]
-        @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, dets, inverse_jacobian, elIDs)
 
-        @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, ref_itp_vals, inverse_jacobian, elIDs)
+        $invJac_kernel(jacobian, dets, inverse_jacobian, elIDs)
+        itpval_kernel(integral_vals, ref_itp_vals, inverse_jacobian, elIDs)
 
-        # integral_weights .= (itg_weight .* dets)
-        integral_weights .= itg_weight
-        integral_weights .*= dets
+        integral_weights .= (itg_weight .* dets)
     end)
     return ex
 end
@@ -40,22 +38,22 @@ function gen_BasicBoundary_Funcs(dim::Integer)
         X_IDs = ntuple(x -> x == X_dim ? 2 : 1, $dim)
     end)
     for this_dim = 1:dim
-        x_sym = Symbol(string("x", this_dim))
+        x_sym = Symbol("x$(this_dim)")
         push!(jac_block.args, :(jacobian[$this_dim, X_dim, :, facet_IDs] .= bdy_ref_itp_vals[eindex][:, :, X_IDs...] * controlpoints.$x_sym[cpIDs]))
     end
 
-    invJac_kernel = Symbol(string("inv_Jac_", dim, "D"))
-    tangent_kernel = Symbol(string("update_Basic_Tangent_", dim, "D"))
+    invJac_kernel = Symbol("inv_Jac_$(dim)D")
+    tangent_kernel = Symbol("update_Basic_Tangent_$(dim)D")
     normal_kernel = Symbol(string("update_Basic_Normal_", dim, "D"))
-    kernel_libs = Symbol(string("BASE_KERNELS_", dim, "D"))
-    func = Symbol(string("update_BasicBoundary_", dim, "D"))
+    kernel_libs = Symbol("BASE_KERNELS_$(dim)D")
+    func = Symbol("update_BasicBoundary_$(dim)D")
     ex = :(function ($func)(mesh::FEM_WP_Mesh, this_space::Classical_Discretization, itpval_kernel::Function)
         @Takeout (controlpoints, facets, elements) FROM mesh
         @Takeout (tangent_directions, normal_directions, jacobian, inverse_jacobian, el_dets, bdy_dets, 
                   element_ID, element_eindex, integral_vals, integral_weights) FROM facets
         @Takeout (itp_func_num, bdy_itg_func_num, bdy_itg_weights, bdy_tangent_directions, bdy_ref_itp_vals) FROM this_space
 
-        Threads.@threads for eindex = 1:length(bdy_ref_itp_vals)
+        for eindex = 1:length(bdy_ref_itp_vals)
             facet_IDs = findall(facets.is_occupied .& (element_eindex .== eindex))
             # facet_IDs = findall(facets.is_occupied .& (element_eindex .== eindex) .& (facets.outer_element_ID .== 0))
             isempty(facet_IDs) && continue
@@ -65,11 +63,10 @@ function gen_BasicBoundary_Funcs(dim::Integer)
                 $jac_block
             end
             integral_vals[:, :, ($ID_for_no_diff)..., facet_IDs] .= bdy_ref_itp_vals[eindex][:, :, ($ID_for_no_diff)...]
-            @Dumb_CUDA_Batch 256 $invJac_kernel(jacobian, el_dets, inverse_jacobian, facet_IDs) #Note this dets do not make sense
-            @Dumb_CUDA_Batch 256 $tangent_kernel(jacobian, tangent_directions, bdy_tangent_directions[eindex], facet_IDs)
-            @Dumb_CUDA_Batch 256 $normal_kernel(normal_directions, tangent_directions, bdy_dets, facet_IDs)
-
-            @Dumb_CUDA_Batch 256 itpval_kernel(integral_vals, bdy_ref_itp_vals[eindex], inverse_jacobian, facet_IDs)
+            $invJac_kernel(jacobian, el_dets, inverse_jacobian, facet_IDs) #Note this dets do not make sense
+            $tangent_kernel(jacobian, tangent_directions, bdy_tangent_directions[eindex], facet_IDs)
+            $normal_kernel(normal_directions, tangent_directions, bdy_dets, facet_IDs)
+            itpval_kernel(integral_vals, bdy_ref_itp_vals[eindex], inverse_jacobian, facet_IDs)
 
             integral_weights[:, facet_IDs] .= bdy_itg_weights[eindex] .* bdy_dets[:, facet_IDs]
         end
@@ -77,7 +74,7 @@ function gen_BasicBoundary_Funcs(dim::Integer)
     return ex
 end
 
-@Dumb_Kernel inv_Jac_2D(jacobian, dets, inverse_jacobian, IDs) begin
+@Dumb_GPU_Kernel inv_Jac_2D(jacobian::Array, dets::Array, inverse_jacobian::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(dets, 1)
         dets[itg_id, this_ID] = jacobian[1, 1, itg_id, this_ID] * jacobian[2, 2, itg_id, this_ID] -
@@ -90,7 +87,7 @@ end
     end
 end
 
-@Dumb_Kernel inv_Jac_3D(jacobian, dets, inverse_jacobian, IDs) begin
+@Dumb_GPU_Kernel inv_Jac_3D(jacobian::Array, dets::Array, inverse_jacobian::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(dets, 1)
         dets[itg_id, this_ID] = jacobian[1, 1, itg_id, this_ID] * jacobian[2, 2, itg_id, this_ID] * jacobian[3, 3, itg_id, this_ID] -
@@ -123,8 +120,7 @@ end
     end
 end
 
-#sd_ids: repeatable dimension numbers, e.g., (1,1,1,3)
-#sd_IDs: table of diff order .+ 1 for indexing, e.g., (4,1,2) , i.e., 3 times diff on dim 1, no diff on dim 2 and 1 diff on dim 3
+#sd_ids: repeatable dimension numbers, e.g., (1,1,1,3), sd_IDs: table of diff order .+ 1 for indexing, e.g., (4,1,2) , i.e., 3 times diff on dim 1, no diff on dim 2 and 1 diff on dim 3
 sd_ids_To_sd_IDs(dim::Integer, sd_ids) = isempty(sd_ids) ? ntuple(x -> 1, dim) : ntuple(x -> sum(sd_ids .== x) + 1, dim) 
 function gen_Kernel_Itpval(max_sd_order::Integer, dim::Integer)
     content = Expr(:block)
@@ -146,7 +142,7 @@ function gen_Kernel_Itpval(max_sd_order::Integer, dim::Integer)
             push!(content.args, :(itg_vals[itg_id, itp_id, $(sd_IDs...), this_ID] = $arg_rhs))
         end
     end
-    ex = :(@Dumb_Kernel ($itpval_kernel)(itg_vals, ref_itp_vals, inverse_jacobian, IDs) begin
+    ex = :(@Dumb_GPU_Kernel ($itpval_kernel)(itg_vals::Array, ref_itp_vals::Array, inverse_jacobian::Array, IDs::Array) begin
         this_ID = IDs[thread_idx]
         for itg_id = 1:size(itg_vals, 1)
             for itp_id = 1:size(itg_vals, 2)
@@ -164,7 +160,7 @@ for dim = 2:3
     Core.eval(@__MODULE__, gen_BasicBoundary_Funcs(dim))
 end
 
-@Dumb_Kernel update_Basic_Tangent_2D(jacobian, tangent_directions, bdy_tangent_directions, IDs) begin
+@Dumb_GPU_Kernel update_Basic_Tangent_2D(jacobian::Array, tangent_directions::Array, bdy_tangent_directions::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(jacobian, 3)
         tangent_directions[itg_id, 1, 1, this_ID] = jacobian[1, 1, itg_id, this_ID] * bdy_tangent_directions[itg_id, 1, 1] +
@@ -174,7 +170,7 @@ end
     end
 end
 
-@Dumb_Kernel update_Basic_Tangent_3D(jacobian, tangent_directions, bdy_tangent_directions, IDs) begin
+@Dumb_GPU_Kernel update_Basic_Tangent_3D(jacobian::Array, tangent_directions::Array, bdy_tangent_directions::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(jacobian, 3)
         tangent_directions[itg_id, 1, 1, this_ID] = jacobian[1, 1, itg_id, this_ID] * bdy_tangent_directions[itg_id, 1, 1] +
@@ -199,7 +195,7 @@ end
     end
 end
 
-@Dumb_Kernel update_Basic_Normal_2D(normal_directions, tangent_directions, dets, IDs) begin
+@Dumb_GPU_Kernel update_Basic_Normal_2D(normal_directions::Array, tangent_directions::Array, dets::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(normal_directions, 1)
         t1, t2 = tangent_directions[itg_id, 1, 1, this_ID], tangent_directions[itg_id, 2, 1, this_ID]
@@ -211,7 +207,7 @@ end
     end
 end
 
-@Dumb_Kernel update_Basic_Normal_3D(normal_directions, tangent_directions, dets, IDs) begin
+@Dumb_GPU_Kernel update_Basic_Normal_3D(normal_directions::Array, tangent_directions::Array, dets::Array, IDs::Array) begin
     this_ID = IDs[thread_idx]
     for itg_id = 1:size(normal_directions, 1)
         t1_1, t2_1, t3_1 = tangent_directions[itg_id, 1, 1, this_ID], tangent_directions[itg_id, 2, 1, this_ID], tangent_directions[itg_id, 3, 1, this_ID]

@@ -1,4 +1,4 @@
-@Dumb_Kernel _Var_Basic(itp_vals, sd_IDs, cpID_shift, el_g_cpIDs, x_star, target, itg_hostIDs, elIDs) begin #Note this is a sum on itp, not itg
+@Dumb_GPU_Kernel _Var_Basic(itp_vals::Array, sd_IDs, cpID_shift, el_g_cpIDs::Array, x_star::Array, target::Array, itg_hostIDs::Array, elIDs::Array) begin #Note this is a sum on itp, not itg
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -12,7 +12,7 @@
     end
 end
 
-@Dumb_Kernel _Var_Cut(itp_vals, sd_IDs, cpID_shift, el_g_cpIDs, x_star, target, elIDs) begin #Note this is a sum on itp, not itg
+@Dumb_GPU_Kernel _Var_Cut(itp_vals::Array, sd_IDs, cpID_shift, el_g_cpIDs::Array, x_star::Array, target::Array, elIDs::Array) begin #Note this is a sum on itp, not itg
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -25,7 +25,7 @@ end
     end
 end
 
-@Dumb_Kernel _Kval_Basic(itp_vals, dual_sd_IDs, base_sd_IDs, vals, sparse_IDs_by_el, sparse_ID_shift, K_val, itg_hostIDs, elIDs) begin #Note all local
+@Dumb_GPU_Kernel _Kval_Basic(itp_vals::Array, dual_sd_IDs, base_sd_IDs, vals::Array, sparse_IDs_by_el::Array, sparse_ID_shift, K_val::Array, itg_hostIDs::Array, elIDs::Array) begin #Note all local
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -45,7 +45,7 @@ end
     end
 end
 
-@Dumb_Kernel _Kval_Cut(itp_vals, dual_sd_IDs, base_sd_IDs, vals, sparse_IDs_by_el, sparse_ID_shift, K_val, elIDs) begin #Note all local
+@Dumb_GPU_Kernel _Kval_Cut(itp_vals::Array, dual_sd_IDs, base_sd_IDs, vals::Array, sparse_IDs_by_el::Array, sparse_ID_shift, K_val::Array, elIDs::Array) begin #Note all local
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -63,7 +63,7 @@ end
     end
 end
 
-@Dumb_Kernel _Res_Basic(itp_vals, dual_sd_IDs, vals, cpID_shift, el_g_cpIDs, residue, itg_hostIDs, elIDs) begin
+@Dumb_GPU_Kernel _Res_Basic(itp_vals::Array, dual_sd_IDs, vals::Array, cpID_shift, el_g_cpIDs::Array, residue::Array, itg_hostIDs::Array, elIDs::Array) begin
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -79,7 +79,7 @@ end
     end
 end
 
-@Dumb_Kernel _Res_Cut(itp_vals, dual_sd_IDs, vals, cpID_shift, el_g_cpIDs, residue, elIDs) begin
+@Dumb_GPU_Kernel _Res_Cut(itp_vals::Array, dual_sd_IDs, vals::Array, cpID_shift, el_g_cpIDs::Array, residue::Array, elIDs::Array) begin
     itg_func_num = size(itp_vals, 1)
     itp_num = size(itp_vals, 2)
 
@@ -93,17 +93,3 @@ end
         CUDA.@atomic residue[this_cp_ID + cpID_shift] += sum
     end
 end
-
-# @Dumb_Kernel sample_3D(weights, dx1s, dx2s, dx3s) begin
-#     itg_func_num = size(dx1s, 1)
-#     nearest_id = 1
-#     nearest_dist = dx1s[1, thread_idx] ^ 2. + dx2s[1, thread_idx] ^ 2. + dx3s[1, thread_idx] ^ 2.
-#     for i = 2:itg_func_num
-#         this_dist = dx1s[i, thread_idx] ^ 2. + dx2s[i, thread_idx] ^ 2. + dx3s[i, thread_idx] ^ 2.
-#         if this_dist < nearest_dist 
-#             nearest_id = i
-#             nearest_dist = this_dist
-#         end
-#     end
-#     weights[nearest_id, thread_idx] = 1.
-# end

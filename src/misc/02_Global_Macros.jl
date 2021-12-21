@@ -1,3 +1,4 @@
+using Base: String
 function vectorize_Args(arg)
     if is_block(arg)
         return stripblocks(striplines(arg)).args[:]
@@ -110,7 +111,11 @@ macro Pipe(exs)
 end
 
 macro Construct(typename) 
-    target_type = eval(typename)
+    if typename isa Symbol
+        target_type = eval(typename)
+    elseif typename.head == :curly
+        target_type = eval(typename.args[1])
+    end
     fields = fieldnames(target_type)
     return esc(:($typename($(fields...))))
 end
@@ -119,9 +124,27 @@ const FEM_Int = Int32 #Note, hashing some GPU FEM_Int like indices may assume la
 # const FEM_Float = Float32
 const FEM_Float = Float64
 
-const MEMORY_UNIT = Dict{String, Int}(["B", "KB", "MB", "GB", "TB"] .=> [Int(1 << (10 * i)) for i = 0:4])
-DEFAULT_MEMORY_UNIT = "MB"
-## Memory profiler, need to re polish for tables
+# Memory profiler, need to re polish for tables
+const _UNITS = Dict{String, Int}(["B", "KB", "MB", "GB", "TB"] .=> [Int(1 << (10 * i)) for i = 0:4])
+mutable struct MemUnit
+    u_name::String
+    u_size::Int
+end
+
+function (_obj::MemUnit)(unit_name::String)
+    if unit_name in keys(_UNITS)
+        _obj.u_name = unit_name
+        _obj.u_size = _UNITS[unit_name]
+    end
+end
+
+"""
+    MEM_UNIT(unit_name::String)
+
+Set the displayed memory unit where `unit_name` can be "B", "KB", "MB", "GB", "TB".
+"""
+const MEM_UNIT = MemUnit("MB", _UNITS["MB"])
+
 function estimate_msize(x::T, budget::Integer, counter_func::Function) where T
     msize = counter_func(x, budget)
     if isa(x, Dict)
@@ -146,6 +169,16 @@ GPU_sizeof(x, budget::Integer = 0) = 0
 estimate_memory_CPU(x, budget::Integer = 0) = estimate_msize(x, budget, CPU_sizeof) 
 estimate_memory_GPU(x, budget::Integer = 0) = estimate_msize(x, budget, GPU_sizeof)
 
-unitize(x, unit::String) = x / MEMORY_UNIT[unit]
-report_memory(x, unit::String) = string("$(unitize(estimate_memory_CPU(x), unit)) $unit CPU memory and $(unitize(estimate_memory_GPU(x), unit)) $unit GPU memory")
-report_memory(x) = report_memory(x, DEFAULT_MEMORY_UNIT)
+report_memory(x, _obj::MemUnit) where N = string("$(estimate_memory_CPU(x)/ _obj.u_size) $(_obj.u_name) CPU memory and $(estimate_memory_GPU(x)/ _obj.u_size) $(_obj.u_name) GPU memory")
+report_memory(x) = report_memory(x, MEM_UNIT)
+
+# Prettier gensym
+mutable struct PrefixGenerator
+    prefix::String
+    ID::Int
+    PrefixGenerator(prefix::String) = new(prefix, 0)
+end
+function (_obj::PrefixGenerator)(x)
+    _obj.ID += 1
+    Symbol("$(_obj.prefix)_$(_obj.ID)_$x")
+end

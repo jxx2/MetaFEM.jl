@@ -34,8 +34,7 @@ end
 
 @External_Sym (x, CONTROLPOINT_VAR) (y, CONTROLPOINT_VAR) (z, CONTROLPOINT_VAR) (t, GLOBAL_VAR) (dt, GLOBAL_VAR)
 @External_Sym (F, INTEGRATION_POINT_VAR) (f, INTEGRATION_POINT_VAR) (n, INTEGRATION_POINT_VAR) δ
-@Sym u p T
-
+# @Sym u p T
 const IndexSym = Union{FEM_Int, Symbol}
 struct SymbolicWord #Word (the prefix symbolic is to just make it parallel to symbolic term)
     base_variable::Symbol

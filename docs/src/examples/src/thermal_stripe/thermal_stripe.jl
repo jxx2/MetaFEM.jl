@@ -14,8 +14,8 @@ L1, L2 = domain_size = (0.02, 0.01)
 element_number = Int.(domain_size ./ Δx) # 40 x 20 mesh
 element_shape = :CUBE
 
-vertices, connections = make_Square(domain_size, element_number, element_shape)
-ref_mesh = construct_TotalMesh(vertices, connections)
+vert, connections = make_Square(domain_size, element_number, element_shape)
+ref_mesh = construct_TotalMesh(vert, connections)
 # To define the boundaries, we need to find those sIDs (segment IDs):
 @Takeout (vertices, segments) FROM ref_mesh
 sIDs = get_BoundaryMesh(ref_mesh)
@@ -32,9 +32,9 @@ sIDs_right = sIDs[(x1_mean .< (L1 .+ err_scale)) .& (x1_mean .> (L1 .- err_scale
 sIDs_bottom = sIDs[(x2_mean .< err_scale) .& (x2_mean .> (.- err_scale))]
 sIDs_top = sIDs[(x2_mean .< (L2 .+ err_scale)) .& (x2_mean .> (L2 .- err_scale))]
 
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-fixed_bg_ID = add_Boundary(wp_ID, vcat(sIDs_left, sIDs_right); fem_domain = fem_domain)
-top_bg_ID = add_Boundary(wp_ID, sIDs_top; fem_domain = fem_domain)
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary!(wp_ID, vcat(sIDs_left, sIDs_right); fem_domain = fem_domain)
+top_bg_ID = add_Boundary!(wp_ID, sIDs_top; fem_domain = fem_domain)
 # ## Physics
 # Similar to the pikachu case, but with volumetric heat dissipation, radiation boundary and fixed boundary, the mathematical formulation is: 
 # ```math
@@ -73,12 +73,12 @@ em = 0.7
     fix_boundary = h_penalty * Bilinear(T, Tw - T) + k * Bilinear(T, n{i} * T{;i}) 
 end
 
-assign_WorkPiece_WeakForm(wp_ID, heat_dissipation; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, fix_boundary; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, top_bg_ID, conv_rad_boundary; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, fixed_bg_ID, fix_boundary; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, top_bg_ID, conv_rad_boundary; fem_domain = fem_domain)
 
 # ## Assembly
-initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
@@ -86,17 +86,17 @@ compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
-assemble_Global_Variables(fem_domain = fem_domain)
-fem_domain.linear_solver = solver_LU_CPU
-fem_domain.globalfield.converge_tol = 1e-4
+assemble_Global_Variables!(fem_domain = fem_domain)
+fem_domain.linear_solver = x -> iterative_Solve!(x; Sv_func! = idrs!, maxiter = 2000, max_pass = 10, s = 8)
+fem_domain.globalfield.converge_tol = 1e-6
 
 cpts = fem_domain.workpieces[1].mesh.controlpoints
 cp_IDs = findall(cpts.is_occupied)
 cpts.T[cp_IDs] .= Tₑₙᵥ 
 cpts.s[cp_IDs] .= 0.
 
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 # ## Plot 
 # With Plots.jl 
 using Plots 
@@ -120,7 +120,3 @@ png(fig, joinpath(@__DIR__, "2D_Thermal_Middle_Line_Plots.png"))
 # VTK
 wp = fem_domain.workpieces[1]
 write_VTK(string(@__DIR__, "\\", "2D_Ceramic_Strip.vtk"), wp)
-# ## Bare script
-# ```julia
-# @__CODE__
-# ```

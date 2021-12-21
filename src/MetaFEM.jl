@@ -10,7 +10,7 @@ CUDA.allowscalar(false)
 
 # Framework
 export FEM_Domain
-export add_WorkPiece, add_Boundary
+export add_WorkPiece!, add_Boundary!
 
 # Mesh
 export make_Square, make_Brick
@@ -18,24 +18,24 @@ export read_Mesh, construct_TotalMesh, get_BoundaryMesh
 
 # Symbolics
 export @Sym, @External_Sym, @Def, visualize, VARIABLE_ATTRIBUTES
-export assign_WorkPiece_WeakForm, assign_Boundary_WeakForm
+export assign_WorkPiece_WeakForm!, assign_Boundary_WeakForm!
 
 # Assembly
-export initialize_LocalAssembly, mesh_Classical, compile_Updater_GPU
+export initialize_LocalAssembly!, mesh_Classical, compile_Updater_GPU
 
 # Run
-export update_Mesh, assemble_Global_Variables
-export update_OneStep, dessemble_X
+export update_Mesh, assemble_Global_Variables!
+export update_OneStep!, dessemble_X!, assemble_X!
 
 # Linear Solvers
-export solver_LU_CPU, solver_QR, solver_LU, solver_BiCG, solver_IDRs
+export solver_LU_CPU, solver_QR_GPU, solver_LU_GPU, iterative_Solve!
+export bicgstabl_GS!, bicgstabl!, idrs!, idrs_original!, gmres!, lsqr!
 
 # Preconditioners
-export precondition_CUDA_Jacobi, precondition_CUDA_ILU
+export Identity, Pr_Jacobi!, Pl_Jacobi, Pl_ILU
 
-# Other Helper Functions
-export write_VTK
-export @Takeout
+# Other Helper Functions/variables
+export write_VTK, @Takeout, MEM_UNIT
 
 filename_match(x) = match(r"(?<main_name>.*)\.(?<tail_name>[a-z]*$)", x)
 function include_all_file_in_dir(this_dir::String)
@@ -51,6 +51,7 @@ function include_dir_from_base(this_name::String)
 end
 
 BASE_DIR = @__DIR__
+
 include_dir_from_base("misc")
 include_dir_from_base("symbolics")
 include_dir_from_base("solver")
@@ -64,4 +65,3 @@ count_Lines(path::String) = isdir(path) ? sum(count_Lines.(joinpath.(path, readd
 println("Loaded ", count_Lines(BASE_DIR), " lines of code in MetaFEM") 
 
 end
-##

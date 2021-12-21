@@ -26,10 +26,10 @@ err_scale = 0.01
 is_left = (x1_mean .< err_scale) .& (x1_mean .> (.- err_scale))
 is_right = (x1_mean .< (L .+ err_scale)) .& (x1_mean .> (L .- err_scale))
 
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-fixed_bg_ID = add_Boundary(wp_ID, facet_IDs[.~(is_left .| is_right)]; fem_domain = fem_domain)
-inflow_bg_ID = add_Boundary(wp_ID, facet_IDs[is_left]; fem_domain = fem_domain)
-outflow_bg_ID = add_Boundary(wp_ID, facet_IDs[is_right]; fem_domain = fem_domain)
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary!(wp_ID, facet_IDs[.~(is_left .| is_right)]; fem_domain = fem_domain)
+inflow_bg_ID = add_Boundary!(wp_ID, facet_IDs[is_left]; fem_domain = fem_domain)
+outflow_bg_ID = add_Boundary!(wp_ID, facet_IDs[is_right]; fem_domain = fem_domain)
 # ## Physics
 # The steady state Navier-Stokes (NS) equation with Streamline-Upwind/Peterove-Galerkin (SUPG) stabilization can be formed as follows:
 # ```math
@@ -89,12 +89,12 @@ end
     WF_boundary_fix = NS_boundary_BASE + NS_boundary_FIX
 end
 
-assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, inflow_bg_ID, WF_boundary_inflow; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, outflow_bg_ID, WF_boundary_outflow; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, inflow_bg_ID, WF_boundary_inflow; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, outflow_bg_ID, WF_boundary_outflow; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
 # ## Assemble
-initialize_LocalAssembly(fem_domain; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_order = 2, itg_order = 6, fem_domain = fem_domain)
 compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
@@ -102,13 +102,13 @@ compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
-assemble_Global_Variables(fem_domain = fem_domain)
-fem_domain.linear_solver = x -> solver_IDRs(x; Pl_func = precondition_CUDA_Jacobi, max_iter = 5000, max_pass = 10, s = 8)
-fem_domain.globalfield.converge_tol = 1e-5
+assemble_Global_Variables!(fem_domain = fem_domain)
+fem_domain.linear_solver = x -> iterative_Solve!(x; Sv_func! = idrs!, Pl_func = Pl_Jacobi, maxiter = 2000, max_pass = 10, s = 8)
+fem_domain.globalfield.converge_tol = 1e-6
 
 fem_domain.globalfield.x .= 0.
 fem_domain.globalfield.t = 0
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 @Takeout (controlpoints, facets, elements) FROM fem_domain.workpieces[1].mesh
 cp_IDs = findall(controlpoints.is_occupied)
@@ -119,18 +119,13 @@ controlpoints.uʷ1[cp_IDs] .= (16 * Um / H ^ 4) .* (ys .* zs .* (H .- ys) .* (H 
 
 tmax = 1
 for i = 1:tmax
-    dt = fem_domain.time_discretization.dt = 0.2 * Δx / Um
+    dt = fem_domain.globalfield.dt = 0.2 * Δx / Um
 
     controlpoints.τᵐ[cp_IDs] .= (9 * 16 * ν ^ 2 * dim * Δx ^ (-4)) ^ (-0.5)
     controlpoints.τᶜ[cp_IDs] .= (controlpoints.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
-    update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
-    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+    update_OneStep!(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+    dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 end
 # ## Save to VTK
 wp = fem_domain.workpieces[1]
 write_VTK(joinpath(@__DIR__, "3D_MetaFEM_Result.vtk"), wp)
-
-# ## Bare script
-# ```julia
-# @__CODE__
-# ```

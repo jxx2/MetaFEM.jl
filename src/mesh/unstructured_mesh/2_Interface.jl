@@ -4,19 +4,18 @@
 The function generates the mesh of order `itp_order`, interpolation type `itp_type` = `:Lagrange`/`:Serendipity` with gaussian quadrature of order `itg_order` on `fem_domain`.`workpieces`[`wp_IDs`].
 The dimension and mesh type (`:CUBE`/`:SIMPLEX`) will follow the first order mesh of each `WorkPiece`.
 """
-function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp_order::Integer, itg_order::Integer, fem_domain::FEM_Domain)
+function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp_order::Integer, itg_order::Integer, fem_domain::FEM_Domain{ArrayType}) where {ArrayType}
     dim = fem_domain.dim
     for wp in fem_domain.workpieces[wp_IDs]
-        this_space = wp.element_space = initialize_Classical_Element(dim, shape, itp_order, wp.max_sd_order, itg_order; itp_type = itp_type)
+        this_space = wp.element_space = initialize_Classical_Element(ArrayType, dim, shape, itp_order, wp.max_sd_order, itg_order; itp_type = itp_type)
 
         controlpoints = declare_Basic_ControlPoint(dim, wp)
         facets = declare_Basic_Facet(dim, this_space)
         elements = declare_Basic_Element(dim, this_space)
-        # cp_cp_2_sparseID = construct_GPUDict([:sparseID => FEM_Int(0)])
 
-        bg_fIDs = Dict{FEM_Int, CuVector{FEM_Int}}()
+        bg_fIDs = Dict{FEM_Int, AbstractArray{FEM_Int, 1}}()
         variable_size = FEM_Int(0)
-        wp.mesh = @Construct Basic_WP_Mesh
+        wp.mesh = @Construct Basic_WP_Mesh{ArrayType}
 
         if dim == 2
             allocate_Basic_WP_Mesh_2D(wp, this_space)
@@ -39,7 +38,7 @@ function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp
     end
 end
 
-function declare_Basic_ControlPoint(dim::Integer, wp::WorkPiece)
+function declare_Basic_ControlPoint(dim::Integer, wp::WorkPiece{ArrayType}) where {ArrayType}
     @Takeout (local_innervar_infos, local_extervars) FROM wp.local_assembly
 
     global_cpID, element_num = (0, 0) .|> FEM_Int
@@ -51,10 +50,10 @@ function declare_Basic_ControlPoint(dim::Integer, wp::WorkPiece)
         controlpoints = @Construct Basic_ControlPoint3D
     end
     local_innervars = getindex.(local_innervar_infos, 1)
-    return construct_GPUTable(controlpoints, Symbol[local_innervars..., local_extervars...] .=> FEM_Float(0.))
+    return construct_FEM_Table(ArrayType, controlpoints, Symbol[local_innervars..., local_extervars...] .=> FEM_Float(0.))
 end
 
-function declare_Basic_Facet(dim::Integer, this_space::Classical_Discretization)
+function declare_Basic_Facet(dim::Integer, this_space::Classical_Discretization{ArrayType}) where {ArrayType}
     @Takeout (bdy_itg_func_num, bdy_ref_itp_vals) FROM this_space
     tangent_directions = zeros(FEM_Float, bdy_itg_func_num, dim, dim - 1)
     normal_directions = zeros(FEM_Float, bdy_itg_func_num, dim)
@@ -70,10 +69,10 @@ function declare_Basic_Facet(dim::Integer, this_space::Classical_Discretization)
     outer_element_ID, outer_element_eindex = (0, 0) .|> FEM_Int
 
     boundaries = @Construct Basic_Facet
-    return construct_GPUTable(boundaries, Symbol[] .=> Array[])
+    return construct_FEM_Table(ArrayType, boundaries, Symbol[] .=> Array[])
 end
 
-function declare_Basic_Element(dim::Integer, this_space::Classical_Discretization)
+function declare_Basic_Element(dim::Integer, this_space::Classical_Discretization{ArrayType}) where {ArrayType}
     @Takeout (itp_func_num, itg_func_num, ref_itp_vals) FROM this_space
 
     controlpoint_IDs, global_cpIDs = zeros(FEM_Int, itp_func_num), zeros(FEM_Int, itp_func_num)
@@ -88,7 +87,7 @@ function declare_Basic_Element(dim::Integer, this_space::Classical_Discretizatio
     dets = zeros(FEM_Float, itg_func_num)
 
     elements = @Construct Basic_Element
-    return construct_GPUTable(elements, Symbol[] .=> Array[])
+    return construct_FEM_Table(ArrayType, elements, Symbol[] .=> Array[])
 end
 
 """
