@@ -1,8 +1,4 @@
 struct Classical_Element_Structure
-    # cp_per_vertex::FEM_Int
-    # cp_per_segment::FEM_Int
-    # cp_per_face::FEM_Int
-    # cp_per_block::FEM_Int
     vertex_cp_ids::Array{FEM_Int} 
     segment_cp_ids::Array{FEM_Int} 
     face_cp_ids::Array{FEM_Int} 
@@ -16,7 +12,7 @@ struct Classical_Element_Structure
     face_start_segments::Array{FEM_Int}
 end
 
-mutable struct Classical_Discretization <: FEM_Spatial_Discretization
+mutable struct Classical_Discretization{ArrayType} <: FEM_Spatial_Discretization{ArrayType}
     element_attributes::Dict{Symbol, Any} 
     #topology 
     element_structure::Classical_Element_Structure
@@ -25,18 +21,20 @@ mutable struct Classical_Discretization <: FEM_Spatial_Discretization
     itp_funcs::Vector{Polynomial}
     #domain integral
     itg_func_num::FEM_Int
-    itg_weight::CuVector{FEM_Float}
+    itg_weight::ArrayType
 
-    ref_itp_vals::CuArray{FEM_Float}
+    ref_itp_vals::ArrayType
     #boundary integral
     bdy_itg_func_num::FEM_Int
-    bdy_itg_weights::Vector{CuVector{FEM_Float}}
-    bdy_tangent_directions::Vector{CuArray{FEM_Float, 3}} #itg_ID, local vector, tangent ID (2D only 1, 3D 2)...
+    bdy_itg_weights::Vector{ArrayType}
+    bdy_tangent_directions::Vector{ArrayType} #itg_ID, local vector, tangent ID (2D only 1, 3D 2)...
 
-    bdy_ref_itp_vals::Vector{CuArray{FEM_Float}} #itg_ID, bdy_cp_ID, diff mode: 1, partialX, partial Y, ...
+    bdy_ref_itp_vals::Vector{ArrayType} #itg_ID, bdy_cp_ID, diff mode: 1, partialX, partial Y, ...
 end
 
-function initialize_Classical_Element(dim::Integer, shape::Symbol, itp_order::Integer, max_sd_order::Integer, itg_order::Integer; itp_type::Symbol = :Lagrange)
+initialize_Classical_Element(dim::Integer, shape::Symbol, itp_order::Integer, max_sd_order::Integer, itg_order::Integer; itp_type::Symbol = :Lagrange) = 
+initialize_Classical_Element(DEFAULT_ARRAYINFO._type, dim, shape, itp_order, max_sd_order, itg_order; itp_type = :itp_type)
+function initialize_Classical_Element(::Type{ArrayType}, dim::Integer, shape::Symbol, itp_order::Integer, max_sd_order::Integer, itg_order::Integer; itp_type::Symbol = :Lagrange) where {ArrayType}
     if shape == :CUBE
         if itp_type == :Lagrange
             if dim == 2
@@ -75,12 +73,11 @@ function initialize_Classical_Element(dim::Integer, shape::Symbol, itp_order::In
     end
     element_attributes = Dict(:dim => dim, :shape => shape, :itp_type => itp_type, :itp_order => itp_order)
     itp_func_num, itg_func_num, bdy_itg_func_num = (itp_funcs, itg_weight, bdy_itg_weights[1]) .|> length
-    itg_weight, bdy_itg_weights, bdy_tangent_directions = (cu(itg_weight), cu.(bdy_itg_weights), cu.(bdy_tangent_directions))
+    itg_weight, bdy_itg_weights, bdy_tangent_directions = (FEM_convert(ArrayType, itg_weight), FEM_convert.(ArrayType, bdy_itg_weights), FEM_convert.(ArrayType, bdy_tangent_directions))
 
-    ref_itp_vals = evaluate_Itp_Funcs(itp_funcs, max_sd_order, itg_pos) |> cu
-    bdy_ref_itp_vals = evaluate_Itp_Funcs.(Ref(itp_funcs), max_sd_order, bdy_itg_pos) .|> cu
-
-    return @Construct Classical_Discretization
+    ref_itp_vals = FEM_convert(ArrayType, evaluate_Itp_Funcs(itp_funcs, max_sd_order, itg_pos))
+    bdy_ref_itp_vals = FEM_convert.(ArrayType, evaluate_Itp_Funcs.(Ref(itp_funcs), max_sd_order, bdy_itg_pos))
+    return @Construct Classical_Discretization{ArrayType}
 end
 
 function evaluate_Itp_Funcs(itp_funcs::Vector{Polynomial{dim}}, max_sd_order::Integer, itg_pos::Vector) where dim

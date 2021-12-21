@@ -1,4 +1,4 @@
-function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discretization)
+function allocate_Basic_WP_Mesh_2D(wp::WorkPiece{ArrayType}, this_space::Classical_Discretization{ArrayType}) where {ArrayType}
     @Takeout (vertices, segments, faces) FROM wp.ref_geometry
     @Takeout (controlpoints, facets, elements, bg_fIDs) FROM wp.mesh #Note here facets refers to segments
     @Takeout (vertex_cp_ids, segment_cp_ids, face_cp_ids, segment_cp_pos, face_cp_pos, segment_start_vertex) FROM this_space.element_structure
@@ -22,7 +22,7 @@ function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discreti
     end
 
     sIDs = findall(segments.is_occupied)
-    segment_facet_IDs = CUDA.zeros(FEM_Int, length(sIDs))
+    segment_facet_IDs = FEM_zeros(ArrayType, FEM_Int, length(sIDs))
     for (bg_index, boundary) in enumerate(wp.physics.boundarys)
         bdyIDs = allocate_by_length!(facets, length(boundary))
         bg_fIDs[bg_index] = bdyIDs
@@ -31,13 +31,12 @@ function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discreti
 
     cp_per_segment, segment_per_element = size(segment_cp_ids)
     for j = 1:segment_per_element
-        @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), segment_facet_IDs, faces.segment_IDs, facets.element_ID, facets.element_eindex, facets.outer_element_ID, 
-        facets.outer_element_eindex, elIDs)
+        specify_eindex(FEM_Int(j), segment_facet_IDs, faces.segment_IDs, facets.element_ID, facets.element_eindex, facets.outer_element_ID, facets.outer_element_eindex, elIDs)
     end
 
     if cp_per_segment > 0
         s_cpIDs = allocate_by_length!(controlpoints, cp_per_segment * length(sIDs))
-        segment_cp_pos = cu(segment_cp_pos)
+        segment_cp_pos = FEM_convert(ArrayType, segment_cp_pos)
         for i = 1:cp_per_segment
             batch_cpIDs = s_cpIDs[i:cp_per_segment:end]
             controlpoints.x1[batch_cpIDs] .= sum(segment_cp_pos .* vertices.x1[segments.vertex_IDs[:, sIDs]], dims = 1)[1, :]
@@ -57,7 +56,7 @@ function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discreti
     cp_per_face = length(face_cp_ids) #2d only has one face
     if cp_per_face > 0
         f_cpIDs = allocate_by_length!(controlpoints, cp_per_face * length(face_IDs))
-        face_cp_pos = cu(face_cp_pos)
+        face_cp_pos = FEM_convert(ArrayType, face_cp_pos)
         for i = 1:cp_per_face
             batch_cpIDs = f_cpIDs[i:cp_per_face:end]
             controlpoints.x1[batch_cpIDs] .= sum(face_cp_pos .* vertices.x1[faces.vertex_IDs[:, face_IDs]], dims = 1)[1, :]
@@ -68,7 +67,7 @@ function allocate_Basic_WP_Mesh_2D(wp::WorkPiece, this_space::Classical_Discreti
     end
 end
 
-function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discretization)
+function allocate_Basic_WP_Mesh_3D(wp::WorkPiece{ArrayType}, this_space::Classical_Discretization{ArrayType}) where {ArrayType}
     @Takeout (vertices, segments, faces, blocks) FROM wp.ref_geometry
     @Takeout (controlpoints, facets, elements, bg_fIDs) FROM wp.mesh #Note here facets refers to segments
     @Takeout (vertex_cp_ids, segment_cp_ids, face_cp_ids, block_cp_ids, segment_cp_pos, face_cp_pos, block_cp_pos, 
@@ -97,7 +96,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
     cp_per_segment, segment_per_element = size(segment_cp_ids)
     if cp_per_segment > 0
         s_cpIDs = allocate_by_length!(controlpoints, cp_per_segment * length(sIDs))
-        segment_cp_pos = cu(segment_cp_pos)
+        segment_cp_pos = FEM_convert(ArrayType, segment_cp_pos)
         for i = 1:cp_per_segment
             batch_cpIDs = s_cpIDs[i:cp_per_segment:end]
             controlpoints.x1[batch_cpIDs] .= sum(segment_cp_pos .* vertices.x1[segments.vertex_IDs[:, sIDs]], dims = 1)[1, :]
@@ -118,7 +117,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
     end
 
     face_IDs = findall(faces.is_occupied)
-    face_facet_IDs = CUDA.zeros(FEM_Int, length(face_IDs))
+    face_facet_IDs = FEM_zeros(ArrayType, FEM_Int, length(face_IDs))
     for (bg_index, boundary) in enumerate(wp.physics.boundarys)
         bdyIDs = allocate_by_length!(facets, length(boundary))
         bg_fIDs[bg_index] = bdyIDs
@@ -127,8 +126,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
 
     cp_per_face, face_per_element = size(face_cp_ids)
     for j = 1:face_per_element
-        @Dumb_CUDA_Batch 256 specify_eindex(FEM_Int(j), face_facet_IDs, blocks.face_IDs, facets.element_ID, facets.element_eindex, 
-        facets.outer_element_ID, facets.outer_element_eindex, elIDs)
+        specify_eindex(FEM_Int(j), face_facet_IDs, blocks.face_IDs, facets.element_ID, facets.element_eindex, facets.outer_element_ID, facets.outer_element_eindex, elIDs)
     end
     
     if cp_per_face > 0
@@ -136,7 +134,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
             error("TO DO face control point matching")
         end
         f_cpIDs = allocate_by_length!(controlpoints, cp_per_face * length(face_IDs))
-        face_cp_pos = cu(face_cp_pos)
+        face_cp_pos = FEM_convert(ArrayType, face_cp_pos)
         for i = 1:cp_per_face
             batch_cpIDs = f_cpIDs[i:cp_per_face:end]
             controlpoints.x1[batch_cpIDs] .= sum(face_cp_pos .* vertices.x1[faces.vertex_IDs[:, face_IDs]], dims = 1)[1, :]
@@ -152,7 +150,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
     cp_per_block = length(block_cp_ids) #2d only has one face
     if cp_per_block > 0
         b_cpIDs = allocate_by_length!(controlpoints, cp_per_block * length(block_IDs))
-        block_cp_pos = cu(block_cp_pos)
+        block_cp_pos = FEM_convert(ArrayType, block_cp_pos)
         for i = 1:cp_per_block
             batch_cpIDs = b_cpIDs[i:cp_per_block:end]
             controlpoints.x1[batch_cpIDs] .= sum(block_cp_pos .* vertices.x1[blocks.vertex_IDs[:, block_IDs]], dims = 1)[1, :]
@@ -164,7 +162,7 @@ function allocate_Basic_WP_Mesh_3D(wp::WorkPiece, this_space::Classical_Discreti
     end
 end
 
-@Dumb_Kernel specify_eindex(f_pos, face_facet_mapping, cell_face_IDs, f_el_ID, eindex, outer_f_el_ID, outer_eindex, elIDs) begin
+@Dumb_GPU_Kernel specify_eindex(f_pos, face_facet_mapping::Array, cell_face_IDs::Array, f_el_ID::Array, eindex::Array, outer_f_el_ID::Array, outer_eindex::Array, elIDs::Array) begin
     this_elID = elIDs[thread_idx]
     # this_face_ID = cell_face_IDs[f_pos, this_elID]
     this_facet_ID = face_facet_mapping[cell_face_IDs[f_pos, this_elID]]

@@ -1,5 +1,3 @@
-In MetaFEM V0.1.0 there are in total 30 exposed API functions/macros/types/gloabal variables.
-
 ## Core
 MetaFEM has three basic data structures:
 * FEM_Domain, the overall system, defines $Kx=d$.
@@ -8,7 +6,7 @@ MetaFEM has three basic data structures:
 ```@docs
     FEM_Domain
     MetaFEM.WorkPiece
-    add_Boundary
+    add_Boundary!
 ```
 ## Mesh
 The input to define a mesh is (vert, connections), very similar to the mesh loading process in other fields, e.g., for plotting
@@ -34,7 +32,7 @@ The APIs to define the physics are pretty straightforward:
 ```@docs
     @Sym
     @Def
-    assign_Boundary_WeakForm
+    assign_Boundary_WeakForm!
     visualize
 ```
 The internal mechanism is different from the classical approaches and worth mentioning: The expressions will go through symbolic rewriting
@@ -43,7 +41,7 @@ with [rewriting rules](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolic
 ## Assembly
 There are some necessary preprocesses:
 ```@docs
-    initialize_LocalAssembly
+    initialize_LocalAssembly!
     mesh_Classical
     compile_Updater_GPU
 ```
@@ -51,9 +49,10 @@ There are some necessary preprocesses:
 ## Update simulation
 ```@docs
     update_Mesh
-    assemble_Global_Variables
-    update_OneStep
-    dessemble_X
+    assemble_Global_Variables!
+    update_OneStep!
+    assemble_X!
+    dessemble_X!
 ```
 
 ## Linear solvers
@@ -61,19 +60,28 @@ In update\_OneStep, the linear solver, fem\_domain.linear\_solver is called, whi
 We provide the following linear solvers:
 ```@docs
     solver_LU_CPU
-    solver_QR
-    solver_LU
-    solver_BiCG
-    solver_IDRs
+    solver_QR_GPU
+    solver_LU_GPU
+    iterative_Solve!
+    bicgstabl!
+    bicgstabl_GS!
+    idrs!
+    idrs_original!
+    gmres!
+    lsqr!
 ```
 with the following preconditioners:
 ```@docs
-    precondition_CUDA_Jacobi
-    precondition_CUDA_ILU
+    Identity
+    Pr_Jacobi!
+    Pl_Jacobi
+    Pl_ILU
 ```
+where the prefix `Pl` denotes left preconditioners while the prefix `Pr`denotes right preconditioners. 
 
 ## Other helper functions
 ```@docs
     write_VTK
     @Takeout
+    MEM_UNIT
 ```

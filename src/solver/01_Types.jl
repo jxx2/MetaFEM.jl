@@ -1,19 +1,20 @@
-abstract type FEM_Geometry end #2D / 3D, Mesh / bdy
-abstract type FEM_Object end
+abstract type FEM_Geometry{ArrayType} end #2D / 3D, Mesh / bdy
+abstract type FEM_Object{ArrayType} end
 
-abstract type FEM_WP_Mesh end
-abstract type FEM_Tool_Mesh end
-abstract type FEM_Spatial_Discretization end
+abstract type FEM_WP_Mesh{ArrayType} end
+abstract type FEM_Tool_Mesh{ArrayType} end
+abstract type FEM_Spatial_Discretization{ArrayType} end
 abstract type FEM_Temporal_Discretization end
 
 #physics
 #--------------------------
-mutable struct FEM_Physics
+mutable struct FEM_Physics{ArrayType}
     extra_var::Vector{Symbol}
-    boundarys::Vector{CuVector{FEM_Int}} #each boundary group is a set of ref_edge_IDs
+    boundarys::Vector #each boundary group is a set of ref_edge_IDs
+    # boundarys::Vector{ArrayType} #each boundary group is a set of ref_edge_IDs
     boundary_weakform_pairs::Dict{FEM_Int, Symbolic_WeakForm} #bg_ID, wf
     domain_weakform::Symbolic_WeakForm
-    FEM_Physics() = new(Symbol[], CuVector{FEM_Int}[], Dict{FEM_Int, Symbolic_WeakForm}())
+    FEM_Physics(::Type{ArrayType}) where {ArrayType} = new{ArrayType}(Symbol[], AbstractArray{FEM_Int, 1}[], Dict{FEM_Int, Symbolic_WeakForm}())
 end
 
 #assembly
@@ -68,32 +69,32 @@ A `WorkPiece` is a meshed part assigned with some known physics. The attributes 
 
 To add a `Workpiece` with the geometry `ref_geometry` to the [`FEM_Domain`](@ref) `fem_domain`, the exposed API is:
 
-    add_WorkPiece(ref_geometry; fem_domain::FEM_Domain)
+    add_WorkPiece!(ref_geometry; fem_domain::FEM_Domain)
 
 which returns the `WorkPiece` ID in the `fem_domain`.`workpieces`.
 """
-mutable struct WorkPiece <: FEM_Object
-    ref_geometry::FEM_Geometry
+mutable struct WorkPiece{ArrayType} <: FEM_Object{ArrayType}
+    ref_geometry::FEM_Geometry{ArrayType}
 
-    physics::FEM_Physics
+    physics::FEM_Physics{ArrayType}
     local_assembly::FEM_LocalAssembly
 
     max_sd_order::Integer
     element_space::FEM_Spatial_Discretization
-    mesh::FEM_WP_Mesh
+    mesh::FEM_WP_Mesh{ArrayType}
 
-    function WorkPiece(ref_geometry;)
-        new(ref_geometry, FEM_Physics())
+    function WorkPiece(ref_geometry::FEM_Geometry{ArrayType}) where {ArrayType}
+        new{ArrayType}(ref_geometry, FEM_Physics(ArrayType))
     end
 end
 
-mutable struct Tool <: FEM_Object
-    ref_geometry::FEM_Geometry
-    boundarys::Vector{CuVector{FEM_Int}} #each boundary group is a set of ref_edge_IDs
-    mesh::FEM_Tool_Mesh
+mutable struct Tool{ArrayType} <: FEM_Object{ArrayType}
+    ref_geometry::FEM_Geometry{ArrayType}
+    boundarys::Vector #each boundary group is a set of ref_edge_IDs
+    mesh::FEM_Tool_Mesh{ArrayType}
 
-    function Tool(ref_geometry)
-        new(ref_geometry, CuVector{FEM_Int}[])
+    function Tool(ref_geometry::FEM_Geometry{ArrayType}) where {ArrayType}
+        new{ArrayType}(ref_geometry, AbstractArray{FEM_Int, 1}[])
     end
 end
 
@@ -106,7 +107,7 @@ end
 
 #Time domain
 #-------------------
-mutable struct GlobalField #global infos & FEM data, should be separated later
+mutable struct GlobalField{ArrayType} #global infos & FEM data, should be separated later
     max_time_level::Integer
     basicfield_size::Integer
 
@@ -116,19 +117,19 @@ mutable struct GlobalField #global infos & FEM data, should be separated later
     dt::FEM_Float
     global_vars::Dict{Symbol, FEM_Float}
 
-    x::CuVector{FEM_Float} #x0 u0 a0
-    dx::CuVector{FEM_Float}
-    x_star::CuVector{FEM_Float}
+    x::ArrayType #x0 u0 a0
+    dx::ArrayType
+    x_star::ArrayType
 
-    residue::CuVector{FEM_Float}
+    residue::ArrayType
 
-    K_I::CuVector{FEM_Int}
-    K_J::CuVector{FEM_Int}
-    K_val_ids::CuVector{FEM_Int}
-    
-    K_linear::CuVector{FEM_Float}
-    K_total::CuVector{FEM_Float}
-    GlobalField() = new(0, 0, 0., 0., 0., Dict{Symbol, FEM_Float}())
+    K_I::ArrayType
+    K_J_ptr::ArrayType
+    K_J::ArrayType
+    K_val_ids::AbstractArray
+    K_linear::ArrayType
+    K_total::ArrayType
+    GlobalField(::Type{ArrayType}) where {ArrayType} = new{ArrayType}(0, 0, 0., 0., 0., Dict{Symbol, FEM_Float}())
 end
 
 """
@@ -151,63 +152,62 @@ To add a `FEM_Domain` of dimension `dim`, the exposed API is:
 
 which returns the new `FEM_Domain`.
 """
-mutable struct FEM_Domain #workgroup
+mutable struct FEM_Domain{ArrayType} #workgroup
     dim::Integer
-    workpieces::Vector{WorkPiece}
-    tools::Vector{Tool}
+    workpieces::Vector{WorkPiece{ArrayType}}
+    tools::Vector{Tool{ArrayType}}
 
     time_discretization::FEM_Temporal_Discretization
-    globalfield::GlobalField
+    globalfield::GlobalField{ArrayType}
 
     K_linear_func::Function
     K_nonlinear_func::Function
     linear_solver::Function
     
-    FEM_Domain(; dim::Integer) = new(dim, WorkPiece[], Tool[], GeneralAlpha(), GlobalField())
+    FEM_Domain(::Type{ArrayType} = DEFAULT_ARRAYINFO._type; dim::Integer) where {ArrayType} = new{ArrayType}(dim, WorkPiece{ArrayType}[], Tool{ArrayType}[], GeneralAlpha(), GlobalField(ArrayType)) # need to rewrite
 end
 
-function add_WorkPiece(ref_geometry; fem_domain::FEM_Domain)
+function add_WorkPiece!(ref_geometry::FEM_Geometry{ArrayType}; fem_domain::FEM_Domain{ArrayType}) where {ArrayType}
     push!(fem_domain.workpieces, WorkPiece(ref_geometry))
-    wp_ID = fem_domain.workpieces |> length |> FEM_Int
-    println("Workpiece ", wp_ID, " added!")
+    wp_ID = length(fem_domain.workpieces)
+    println("Workpiece $wp_ID added!")
     return wp_ID
 end
 
 """
-    add_Boundary(ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WorkPiece)
+    add_Boundary!(ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WorkPiece)
 
 In a 2D/3D `FEM_Domain` `fem_domain`, mark the segment/face IDs of the `WorkPiece` `fem_domain`.`workpieces`[`wp_ID`] as a boundary, to assign physics later.
 Multiple boundaries are independent from each other and can share the same segment/face IDs. If target = `:Tool`, the boundary is of `fem_domain`.`tools`[`wp_ID`], not implemented.
 
 The function returns the boundary group ID `bg_ID`.
 """
-function add_Boundary(wp_ID::Integer, bdy_ref_edge_IDs::CuVector; fem_domain::FEM_Domain = fem_domain, target::Symbol = :WorkPiece)
+function add_Boundary!(wp_ID::Integer, bdy_ref_edge_IDs::AbstractVector; fem_domain::FEM_Domain{ArrayType} = fem_domain, target::Symbol = :WorkPiece) where {ArrayType}
     if target == :WorkPiece
         boundarys = fem_domain.workpieces[wp_ID].physics.boundarys
-        msg = string("Boundary ", length(boundarys) + 1, " added to Workpiece ", wp_ID, " !")
     elseif target == :Tool
         boundarys = fem_domain.tools[wp_ID].boundarys
-        msg = string("Boundary ", length(boundarys) + 1, " added to Tool ", wp_ID, " !")
     end
-    push!(boundarys, bdy_ref_edge_IDs)
-    bg_ID = boundarys |> length |> FEM_Int
-    println(msg)
+    push!(boundarys, FEM_convert(ArrayType, bdy_ref_edge_IDs))
+    bg_ID = length(boundarys)
+    println("Boundary $bg_ID added to $target $wp_ID !")
     return bg_ID
 end
 
 """
-    assign_WorkPiece_WeakForm(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
-    assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+    assign_WorkPiece_WeakForm!(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+    assign_Boundary_WeakForm!(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
 
 The functions assign `this_term`, which is either a bilinear term Bilinear(⋅, ⋅), or a sum of the bilinear terms, to the target `WorkPiece` or boundary.
 """
-function assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
-    this_sym_weakform = parse_WeakForm(this_term, fem_domain.dim)
-    this_sym_weakform == 0 && return
-    fem_domain.workpieces[wp_ID].physics.boundary_weakform_pairs[bg_ID] = this_sym_weakform
+function assign_Boundary_WeakForm!(wp_ID::Integer, bg_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+    fem_domain.workpieces[wp_ID].physics.boundary_weakform_pairs[bg_ID] = parse_WeakForm(this_term, fem_domain.dim)
+    if fem_domain.workpieces[wp_ID].physics.boundary_weakform_pairs[bg_ID] == 0 
+        delete!(boundary_weakform_pairs, bg_ID)
+        println("The weakform for Boundary $bg_ID is removed becase it is 0.")
+    end
 end
-assign_Boundary_WeakForm(wp_ID::Integer, bg_ID::Integer, this_term::FEM_Float; fem_domain::FEM_Domain) = this_term == 0 ? this_term : error()
-function assign_WorkPiece_WeakForm(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
-    this_sym_weakform = parse_WeakForm(this_term, fem_domain.dim)
-    fem_domain.workpieces[wp_ID].physics.domain_weakform = this_sym_weakform
+assign_Boundary_WeakForm!(wp_ID::Integer, bg_ID::Integer, this_term::FEM_Float; fem_domain::FEM_Domain) = this_term == 0 ? this_term : error()
+function assign_WorkPiece_WeakForm!(wp_ID::Integer, this_term::SymbolicTerm; fem_domain::FEM_Domain)
+    fem_domain.workpieces[wp_ID].physics.domain_weakform = parse_WeakForm(this_term, fem_domain.dim)
 end

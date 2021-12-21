@@ -8,9 +8,11 @@ B_F_S_SIMPLEX = [[1, 2, 3], [1, 5, 4], [2, 6, 5], [3, 4, 6]]
 B_F_S_CUBE = [[1, 2, 3, 4], [1, 6, 9, 5], [2, 7, 10, 6], [3, 8, 11, 7], [4, 8, 12, 5], [9, 10, 11, 12]]
 
 """
-    construct_TotalMesh(coors::CuArray, connections::CuArray)
+    construct_TotalMesh(coors, connections)
+    construct_TotalMesh(::Type{ArrayType}, coors, connections)
 
-The function reads (vert, connections) and declares the first order mesh, `FEM_Geometry`.
+The function reads (vert, connections) and declares the first order mesh, `FEM_Geometry`. 
+If not explicitly declared, the defualt ArrayType is `DEFAULT_ARRAYINFO`.`_type`, which is GPU_DeviceArray if unspecified.
 
 There are 4 concepts in a `FEM_Geometry`:
 * Each vertex in `vertices` stores the vertex coordinates.
@@ -22,22 +24,43 @@ If applicable, the IDs are in order, e.g., segment IDs in a face are clockwise/c
 The function returns either a `Geo_TotalMesh2D` with attributes (`vertices`, `segments`, `faces`) or a 
 `Geo_TotalMesh3D` with attributes (`vertices`, `segments`, `faces`, `blocks`).
 """
-construct_TotalMesh(coors::AbstractArray, connections::AbstractArray) = construct_TotalMesh(cu(coors), cu(connections))
-function construct_TotalMesh(coors::CuArray, connections::CuArray)
+construct_TotalMesh(coors::AbstractArray, connections::AbstractArray) = construct_TotalMesh(DEFAULT_ARRAYINFO._type, coors, connections)
+function construct_TotalMesh(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    coors = FEM_convert(ArrayType, coors)
+    connections = FEM_convert(ArrayType, connections)
+    
     dim, _ = size(coors)
     if dim == 2 
-        ref_geometry = construct_TotalMesh_2D(coors, connections)
+        ref_geometry = construct_TotalMesh_2D(ArrayType, coors, connections)
     elseif dim == 3 
-        ref_geometry = construct_TotalMesh_3D(coors, connections)
+        ref_geometry = construct_TotalMesh_3D(ArrayType, coors, connections)
     else
         error(dim, "Undefined dimension")
     end
 end
 
+construct_BoundaryMesh(coors::AbstractArray, connections::AbstractArray) = construct_BoundaryMesh(DEFAULT_ARRAYINFO._type, coors, connections)
+function construct_BoundaryMesh(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    coors = FEM_convert(ArrayType, coors)
+    connections = FEM_convert(ArrayType, connections)
+    
+    dim, _ = size(coors)
+    vertices_per_block, _ = size(connections)
+
+    if dim == 2 && vertices_per_block == 2
+        ref_geometry = construct_BoundaryMesh_2D(ArrayType, coors, connections)
+    elseif dim == 3 && vertices_per_block == 3
+        ref_geometry = construct_BoundaryMesh_3D(ArrayType, coors, connections)
+    else
+        error("dim", dim, "vertices_per_block", vertices_per_block, "Undefined mesh type")
+    end
+end
+
 get_Next_ID(id, size) = id == size ? 1 : (id + 1)
 get_Prev_ID(id, size) = id == 1 ? size : (id - 1)
-function construct_TotalMesh_2D(coors::CuArray, connection::CuArray)
-    vertex_per_block, block_number = size(connection)
+
+function construct_TotalMesh_2D(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    vertex_per_block, block_number = size(connections)
     if vertex_per_block == 3
         mesh_type = :SIMPLEX
         F_S_V_POS = F_S_V_SIMPLEX
@@ -48,18 +71,18 @@ function construct_TotalMesh_2D(coors::CuArray, connection::CuArray)
         error("dim", dim, "vertices_per_block", vertices_per_block, "Undefined mesh type")
     end
 
-    ref_geometry = Geo_TotalMesh2D(mesh_type)
+    ref_geometry = Geo_TotalMesh2D(ArrayType, mesh_type)
     @Takeout (vertices, segments, faces) FROM ref_geometry
     vIDs = allocate_by_length!(vertices, size(coors, 2)) #Note here vIDs start exactly from 1, e.g., 1, 2,..., so connections don't need modification
     vertices.x1[vIDs] .= coors[1, :]
     vertices.x2[vIDs] .= coors[2, :]
 
     fIDs = allocate_by_length!(faces, block_number)
-    faces.vertex_IDs[:, fIDs] .= connection   
+    faces.vertex_IDs[:, fIDs] .= connections   
 
-    seg_dict = dumb_GPUDict_Init(FEM_Int(0))
+    seg_dict = dumb_FEM_Dict_Init(ArrayType, FEM_Int)
     for (f_s_pos, s_v_pos) in enumerate(F_S_V_POS)
-        s_vIDs = connection[s_v_pos, :]
+        s_vIDs = connections[s_v_pos, :]
         rotate_size = length(s_v_pos)
 
         max_vIDs, cart_pos = findmax(s_vIDs, dims = 1) .|> vec
@@ -70,7 +93,7 @@ function construct_TotalMesh_2D(coors::CuArray, connection::CuArray)
         next_vIDs = s_vIDs[CartesianIndex.(next_pos, last_dim_ids)]
         dict_keys = I4I30I30_To_UI64.(0, max_vIDs, next_vIDs)
         
-        dict_slots = GPUDict_SetID(seg_dict, dict_keys)
+        dict_slots = FEM_Dict_SetID!(seg_dict, dict_keys)
         total_dict_IDs = get_Total_IDs(seg_dict)
         not_allocated = seg_dict.vals[total_dict_IDs] .== 0
 
@@ -87,8 +110,8 @@ function construct_TotalMesh_2D(coors::CuArray, connection::CuArray)
     return ref_geometry
 end
 
-function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
-    vertex_per_block, block_number = size(connection)
+function construct_TotalMesh_3D(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    vertex_per_block, block_number = size(connections)
     if vertex_per_block == 4
         mesh_type = :SIMPLEX
         vertex_per_face = 3
@@ -103,7 +126,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
         error("dim", dim, "vertices_per_block", vertices_per_block, "Undefined mesh type")
     end
 
-    ref_geometry = Geo_TotalMesh3D(mesh_type)
+    ref_geometry = Geo_TotalMesh3D(ArrayType, mesh_type)
     @Takeout (vertices, segments, faces, blocks) FROM ref_geometry
     vIDs = allocate_by_length!(vertices, size(coors, 2)) #Note here vIDs start exactly from 1, e.g., 1, 2,..., so connections don't need modification
     vertices.x1[vIDs] .= coors[1, :]
@@ -111,11 +134,11 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
     vertices.x3[vIDs] .= coors[3, :]
 
     bIDs = allocate_by_length!(blocks, block_number)
-    blocks.vertex_IDs[:, bIDs] .= connection   
+    blocks.vertex_IDs[:, bIDs] .= connections   
 
-    seg_dict = dumb_GPUDict_Init(FEM_Int(0))
+    seg_dict = dumb_FEM_Dict_Init(ArrayType, FEM_Int)
     for (b_s_pos, s_v_pos) in enumerate(B_S_V_POS)
-        s_vIDs = connection[s_v_pos, :]
+        s_vIDs = connections[s_v_pos, :]
         rotate_size = length(s_v_pos)
 
         max_vIDs, cart_pos = findmax(s_vIDs, dims = 1) .|> vec
@@ -127,7 +150,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
         next_vIDs = s_vIDs[CartesianIndex.(next_pos, last_dim_ids)]
         dict_keys = I4I30I30_To_UI64.(0, max_vIDs, next_vIDs)
 
-        dict_slots = GPUDict_SetID(seg_dict, dict_keys)
+        dict_slots = FEM_Dict_SetID!(seg_dict, dict_keys)
         total_dict_IDs = get_Total_IDs(seg_dict)
         not_allocated = seg_dict.vals[total_dict_IDs] .== 0
 
@@ -141,7 +164,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
         segments.vertex_IDs[2, local_sIDs] .= next_vIDs
     end
 
-    fac_dict = dumb_GPUDict_Init(FEM_Int(0))
+    fac_dict = dumb_FEM_Dict_Init(ArrayType, FEM_Int)
     for (b_f_pos, f_s_pos) in enumerate(B_F_S_POS)
         f_sIDs = blocks.segment_IDs[f_s_pos, bIDs]
         rotate_size = length(f_s_pos)
@@ -158,7 +181,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
         next_sIDs = f_sIDs[CartesianIndex.(next_pos, last_dim_ids)]
         dict_keys = I4I30I30_To_UI64.(0, max_sIDs, next_sIDs)
         
-        dict_slots = GPUDict_SetID(fac_dict, dict_keys)
+        dict_slots = FEM_Dict_SetID!(fac_dict, dict_keys)
         total_dict_IDs = get_Total_IDs(fac_dict)
         not_allocated = fac_dict.vals[total_dict_IDs] .== 0
 
@@ -172,7 +195,7 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
         last_sIDs = max_sIDs
         for i = 1:1:vertex_per_face
             is_first_vID = (segments.vertex_IDs[1, last_sIDs] .== segments.vertex_IDs[1, next_sIDs]) .| 
-                           (segments.vertex_IDs[1, last_sIDs] .== segments.vertex_IDs[2, next_sIDs])
+                        (segments.vertex_IDs[1, last_sIDs] .== segments.vertex_IDs[2, next_sIDs])
             
             faces.vertex_IDs[i, local_fIDs[is_first_vID]] .= segments.vertex_IDs[1, last_sIDs[is_first_vID]]
             faces.vertex_IDs[i, local_fIDs[.~ is_first_vID]] .= segments.vertex_IDs[2, last_sIDs[.~ is_first_vID]]
@@ -193,45 +216,32 @@ function construct_TotalMesh_3D(coors::CuArray, connection::CuArray)
     return ref_geometry
 end
 
-function construct_BoundaryMesh(coors::CuArray, connections::CuArray)
-    dim, _ = size(coors)
-    vertices_per_block, _ = size(connections)
-
-    if dim == 2 && vertices_per_block == 2
-        ref_geometry = construct_BoundaryMesh_2D(coors, connections)
-    elseif dim == 3 && vertices_per_block == 3
-        ref_geometry = construct_BoundaryMesh_3D(coors, connections)
-    else
-        error("dim", dim, "vertices_per_block", vertices_per_block, "Undefined mesh type")
-    end
-end
-
-function construct_BoundaryMesh_2D(coors::CuArray, connection::CuArray)
-    ref_geometry = Geo_BoundaryMesh2D()
+function construct_BoundaryMesh_2D(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    ref_geometry = Geo_BoundaryMesh2D(ArrayType)
     @Takeout (vertices, segments) FROM ref_geometry
     vIDs = allocate_by_length!(vertices, size(coors, 2)) #Note here vIDs start exactly from 1, e.g., 1, 2,..., so connections don't need modification
     vertices.x1[vIDs] .= coors[1, :]
     vertices.x2[vIDs] .= coors[2, :]
 
-    sIDs = allocate_by_length!(segments, size(connection, 2))
-    segments.vertex_IDs[:, sIDs] .= connection   
+    sIDs = allocate_by_length!(segments, size(connections, 2))
+    segments.vertex_IDs[:, sIDs] .= connections   
     return ref_geometry
 end
 
-function construct_BoundaryMesh_3D(coors::CuArray, connection::CuArray)
-    ref_geometry = Geo_BoundaryMesh3D()
+function construct_BoundaryMesh_3D(::Type{ArrayType}, coors::AbstractArray, connections::AbstractArray) where {ArrayType}
+    ref_geometry = Geo_BoundaryMesh3D(ArrayType)
     @Takeout (vertices, segments, faces) FROM ref_geometry
     vIDs = allocate_by_length!(vertices, size(coors, 2)) #Note here vIDs start exactly from 1, e.g., 1, 2,..., so connections don't need modification
     vertices.x1[vIDs] .= coors[1, :]
     vertices.x2[vIDs] .= coors[2, :]
     vertices.x3[vIDs] .= coors[3, :]
 
-    fIDs = allocate_by_length!(faces, size(connection, 2))
-    faces.vertex_IDs[:, fIDs] .= connection   
+    fIDs = allocate_by_length!(faces, size(connections, 2))
+    faces.vertex_IDs[:, fIDs] .= connections   
 
-    seg_dict = dumb_GPUDict_Init(FEM_Int(0))
+    seg_dict = dumb_FEM_Dict_Init(ArrayType, FEM_Int)
     for (f_s_pos, s_v_pos) in enumerate(F_S_V_POS[mesh_type])
-        s_vIDs = connection[s_v_pos, :]
+        s_vIDs = connections[s_v_pos, :]
         rotate_size = length(s_v_pos)
 
         max_vIDs, cart_pos = findmax(s_vIDs, dims = 1) .|> vec
@@ -242,7 +252,7 @@ function construct_BoundaryMesh_3D(coors::CuArray, connection::CuArray)
         next_vIDs = s_vIDs[CartesianIndex.(next_pos, last_dim_ids)]
         dict_keys = I4I30I30_To_UI64.(0, max_vIDs, next_vIDs)
         
-        dict_slots = GPUDict_SetID(seg_dict, dict_keys)
+        dict_slots = FEM_Dict_SetID!(seg_dict, dict_keys)
         total_dict_IDs = get_Total_IDs(seg_dict)
         not_allocated = seg_dict.vals[total_dict_IDs] .== 0
 
@@ -264,19 +274,17 @@ end
 
 Helper function to collect all the segment/face IDs which can be marked as boundary.
 """
-function get_BoundaryMesh(total_mesh::Geo_TotalMesh2D)
-    @Takeout (segments, faces) FROM total_mesh
-    f_el_num = CUDA.zeros(FEM_Int, length(segments.is_occupied))
-    elIDs = findall(faces.is_occupied)
-    @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(faces.segment_IDs[:, elIDs]))
+function get_BoundaryMesh(total_mesh::Geo_TotalMesh2D{ArrayType}) where {ArrayType}
+    f_el_num = FEM_zeros(ArrayType, FEM_Int, length(total_mesh.segments.is_occupied))
+    elIDs = findall(total_mesh.faces.is_occupied)
+    inc_Num!(f_el_num, 1, vec(total_mesh.faces.segment_IDs[:, elIDs]))
     return findall(f_el_num .== 1)
 end
 
-function get_BoundaryMesh(total_mesh::Geo_TotalMesh3D)
-    @Takeout (faces, blocks) FROM total_mesh
-    f_el_num = CUDA.zeros(FEM_Int, length(faces.is_occupied))
-    elIDs = findall(blocks.is_occupied)
-    @Dumb_CUDA_Batch 256 inc_Num(f_el_num, vec(blocks.face_IDs[:, elIDs]))
+function get_BoundaryMesh(total_mesh::Geo_TotalMesh3D{ArrayType}) where {ArrayType}
+    f_el_num = FEM_zeros(ArrayType, FEM_Int, length(total_mesh.faces.is_occupied))
+    elIDs = findall(total_mesh.blocks.is_occupied)
+    inc_Num!(f_el_num, 1, vec(total_mesh.blocks.face_IDs[:, elIDs]))
     return findall(f_el_num .== 1)
 end
 

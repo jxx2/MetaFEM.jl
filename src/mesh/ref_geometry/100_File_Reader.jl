@@ -5,7 +5,7 @@ The function loads an external mesh. Currently supported file types are:
 * `.inp` file, Abaqus first order mesh.
 * `.mphtxt` file, COMSOL mesh.
 """
-function read_Mesh(filename::String) #read coor and connection to form ref geometry
+function read_Mesh(filename::String) #read coor and connections to form ref geometry
     tail_name = match(r"\.(?<extension>[a-z|A-Z|0-9]*$)", filename)[:extension]
 
     if lowercase(tail_name) == "inp"
