@@ -22,13 +22,13 @@ facet_IDs_back = facet_IDs[(x2_mean .< (L .+ err_scale)) .& (x2_mean .> (L .- er
 facet_IDs_bottom = facet_IDs[(x3_mean .< err_scale) .& (x3_mean .> (.- err_scale))]
 facet_IDs_top = facet_IDs[(x3_mean .< (L .+ err_scale)) .& (x3_mean .> (L .- err_scale))]
 
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-d1_fix_bg_ID = add_Boundary(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
-d2_fix_bg_ID = add_Boundary(wp_ID, facet_IDs_front; fem_domain = fem_domain) #left fixed
-d3_fix_bg_ID = add_Boundary(wp_ID, facet_IDs_bottom; fem_domain = fem_domain) #left fixed
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+d1_fix_bg_ID = add_Boundary!(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
+d2_fix_bg_ID = add_Boundary!(wp_ID, facet_IDs_front; fem_domain = fem_domain) #left fixed
+d3_fix_bg_ID = add_Boundary!(wp_ID, facet_IDs_bottom; fem_domain = fem_domain) #left fixed
 
-free_bg_ID = add_Boundary(wp_ID, vcat(facet_IDs_right, facet_IDs_top); fem_domain = fem_domain) #bot & right free
-loaded_bg_ID = add_Boundary(wp_ID, facet_IDs_back; fem_domain = fem_domain) #top loadeds
+free_bg_ID = add_Boundary!(wp_ID, vcat(facet_IDs_right, facet_IDs_top); fem_domain = fem_domain) #bot & right free
+loaded_bg_ID = add_Boundary!(wp_ID, facet_IDs_back; fem_domain = fem_domain) #top loadeds
 
 E = 210e9
 ν = 0.3
@@ -50,28 +50,29 @@ E = 210e9
     WF_loaded_bdy = Bilinear(d{2}, σˡ{2,2} * n{2})
 end
 
-assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, d1_fix_bg_ID, WF_d1_fixed_bdy; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, d2_fix_bg_ID, WF_d2_fixed_bdy; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, d3_fix_bg_ID, WF_d3_fixed_bdy; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, d1_fix_bg_ID, WF_d1_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, d2_fix_bg_ID, WF_d2_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, d3_fix_bg_ID, WF_d3_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
 
-initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces)
+initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
-assemble_Global_Variables(; fem_domain = fem_domain)
+assemble_Global_Variables!(; fem_domain = fem_domain)
 compile_Updater_GPU(; domain_ID = 1, fem_domain = fem_domain)
 
-fem_domain.linear_solver = x -> solver_IDRs(x; Pl_func = precondition_CUDA_ILU, max_iter = 3000, max_pass = 20, s = 8)
+fem_domain.linear_solver = x -> iterative_Solve!(x; Sv_func! = idrs!, maxiter = 2000, max_pass = 20, s = 20)
 fem_domain.globalfield.converge_tol = 1e-8
 σ_external = 1
 
 cp = fem_domain.workpieces[1].mesh.controlpoints
 cp.σˡ2 .= σ_external
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 wp = fem_domain.workpieces[1]
 write_VTK(string(@__DIR__, "\\", "3D_MetaFEM.vtk"), wp)

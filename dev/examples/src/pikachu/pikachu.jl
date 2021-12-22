@@ -26,11 +26,11 @@ ref_mesh = construct_TotalMesh(vert ./ 100, connections)
 # Now we add a "workpiece", an object which will be assigned physics later, to our FEM\_Domain,
 # which returns wp\_ID (the workpiece ID) for later reference by simply "fem\_domain.workpieces[wp\_ID]".  
 # Multiple workpieces in the same domain will be solved in coupling as a monolithic linear system $Kx = d$.
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
 # We also need to define boundary. We call "get\_BoundaryMesh" to return all the IDs for the boundary faces (segments in 2D domain). 
 # We assign all of them as one boundary, assuming our pikachu is under convection in homogeneous air.
 fIDs = get_BoundaryMesh(ref_mesh)
-flux_bg_ID = add_Boundary(wp_ID, fIDs; fem_domain = fem_domain)
+flux_bg_ID = add_Boundary!(wp_ID, fIDs; fem_domain = fem_domain)
 # ## Physics
 # Then we are going to define physics, the most joyful part of the code. 
 # On the one hand, the mathematical formulation for the heat conduction in the pikachu $\Omega$ with convection on $\partial\Omega$ is:
@@ -43,30 +43,29 @@ flux_bg_ID = add_Boundary(wp_ID, fIDs; fem_domain = fem_domain)
 # ```math
 # h(T,T_{env}-T)=0,\qquad on\quad\partial\Omega
 # ```
-# where $T$ is the body temperature, $C$ is the volumetric heat capacity, $k$ is the thermal conductivity, $h$ is the convective
+# where $T$ is the body temperature, $k$ is the thermal conductivity, $h$ is the convective
 # coefficient, $T_{env}$ is the environment (air) temperature, $s$ is the heat source. 
 #
 # On the other hand, the code is:
-C = 1.
 k = 0.6 
 h = 25. 
 Tₑₙᵥ = 273.15 + 20
 
+@Sym T
 @External_Sym (s, CONTROLPOINT_VAR)
 @Def begin
     heat_dissipation = - k * Bilinear(T{;i}, T{;i}) + Bilinear(T, s)
     conv_boundary = h * Bilinear(T, Tₑₙᵥ - T) 
 end
-assign_WorkPiece_WeakForm(wp_ID, heat_dissipation; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_domain)
 # Fairly self-illustrative, isn't it? Remarks:
 # * C, k, h, $T_{env}$ are just Julia native variables, i.e., floating-point numbers (with SI base units);
 # * s is an external variable, which means they will not be differentiated and allocated in the final linear system $Kx=d$, but they will have a number per workpiece controlpoint (alias for the FEM mesh vertex, in contrast to the first order mesh nodes we used to describe the geometry).
-# * Only the variables which are actually in use (in a weak-form assigned to a workpiece) will be allocated. Also, we did not define T because MetaFEM has default variable declaration of the [following code](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/01_Types.jl):
+# * Only the variables which are actually in use (in a weak-form assigned to a workpiece) will be allocated. Also, MetaFEM has the default variable declaration from the [following code](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/01_Types.jl):
 # ```julia
 # @External_Sym (x, CONTROLPOINT_VAR) (y, CONTROLPOINT_VAR) (z, CONTROLPOINT_VAR) (t, GLOBAL_VAR) (dt, GLOBAL_VAR)
 # @External_Sym (F, INTEGRATION_POINT_VAR) (f, INTEGRATION_POINT_VAR) (n, INTEGRATION_POINT_VAR) δ
-# @Sym u p T
 # ```
 # * By @Def, the expressions are parsed. The basic unit for FEM weak-form is a bilinear form, denoted by the function "Bilinear". The symbols or numbers in curly bracket define the subscripts. The semicolon ";" in code is the comma "," in math separating the component index and the derivatives while the comma "," in code is just a separator betweewn symbols. The symbol "t" is reserved only for the derivative index to denote the time derivative. Note, a Julia variable like k is evaluated and fixed in @Def parsing, so if we want a changeable k, we should use:
 # ```julia
@@ -78,10 +77,11 @@ assign_Boundary_WeakForm(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_doma
 # ## Assembly
 # After defining physics, we need to collect, classify and number all the variables each workpiece. Although there is a shorter version:
 # ```julia
-# initialize_LocalAssembly(fem_domain::FEM_Domain; explicit_max_sd_order::Integer) = initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order)
+# initialize_LocalAssembly!(fem_domain::FEM_Domain; explicit_max_sd_order::Integer) = initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order)
 # ```
-# we still prefer to the following way which defines explicitly the maximum spatial differential order per workpiece, i.e., weak-form spatial derivatives order higher than "explicit\_max\_sd\_order" will not be stored to save memory. Memory usage for interpolation points ~ $(order + 1)^{dim}$, e.g., 2-order to 1-order in 3D has a 27 to 8 memory usage difference.
-initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+# we still prefer to the following way which defines explicitly the maximum spatial differential order per workpiece, i.e., weak-form spatial derivatives order higher than "explicit\_max\_sd\_order" will not be stored to save memory. 
+# Memory usage for interpolation points ~ $(order + 1)^{dim}$, e.g., discard second order spatial derivatives in 3D can bring a 27 to 8 memory usage reduction in the element memory usage.
+initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
 # Then we regenerate our mesh to second order serendipity elements with fifth Gaussian quadrature. Note, "mesh\_Classical" needs to know variables so it must be after "initialize\_LocalAssembly".
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 # Also we need to generate the simulation codes, where "domain_ID" is just used to generated function symbol.
@@ -93,23 +93,28 @@ for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
 # Then we allocate the $K, x \text{ and } d$:
-assemble_Global_Variables(fem_domain = fem_domain)
+assemble_Global_Variables!(fem_domain = fem_domain)
 # We also need to choose a linear solver. For a small-sized problem, CPU solver, defined [here](https://github.com/jxx2/MetaFEM.jl/blob/main/src/solver/linear_solver/01_Direct_Solver.jl) using LinearAlgebra.lu, is actually faster, although the data will still be passed to GPU anyway.
-fem_domain.linear_solver = solver_LU_CPU 
-fem_domain.globalfield.converge_tol = 1e-5
+# ```julia
+# fem_domain.linear_solver = solver_LU_CPU
+# ```
+# However, an iterative solver is the most usual choice because it scales better. Empirically, the most handy iterative solvers are the Induced Dimension Reduction "IDR(s)"  
+# and Stabilized Bi Conjugate Gradient "BICGSTAB(l)" where IDR(s) is faster and BICGSTAB(l) is more robust. We also provide some more, e.g., 
+# GMRES (prone to early stagnation when ill-conditioned), LSQR (which is the most robust one, even for a completely random matrix,  but often converges with the slowest speed).
+#
+# In each example, there is at least one usable (both robust and efficient) iterative solver provided. In this specific case, we choose the IDRs solver. 
+# By default, the solver will be preconditioned with the right Jacobi preconditioner.
+fem_domain.linear_solver = x -> iterative_Solve!(x; Sv_func! = idrs!, maxiter = 2000, max_pass = 10, s = 8)
+fem_domain.globalfield.converge_tol = 1e-6
 # Assign initial values and external variables:
 cpts = fem_domain.workpieces[1].mesh.controlpoints
 cp_IDs = findall(cpts.is_occupied)
 cpts.T[cp_IDs] .= Tₑₙᵥ # Static problem doesn't need initial values, but just for completeness. The default initial values are zeros.
 cpts.s[cp_IDs] .= 1600. 
 # Solve $K(\Delta x) = d$ and do $x$ += $\Delta x$:
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-# Pull global x to local variables. (Pushing local to global is included in "update_OneStep"):
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+# Pull global x to local variables. (Pushing local to global is included in "update_OneStep!"):
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 # Save to vtk, note, scale is only for length:
 write_VTK(joinpath(@__DIR__, "3D_MetaFEM_Result.vtk"), fem_domain.workpieces[1]; scale = 100)
 # ![pika2](pika2.png)
-# ## Bare script
-# ```julia
-# @__CODE__
-# ```

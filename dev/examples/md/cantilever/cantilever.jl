@@ -6,8 +6,8 @@ domain_size = (L_box * LW_ratio, L_box, L_box)
 element_number = (Int(e_number * LW_ratio / 4), e_number, e_number)
 element_shape = :CUBE
 
-vertices, connections = make_Brick(domain_size, element_number, element_shape)
-ref_mesh = construct_TotalMesh(vertices, connections)
+vert, connections = make_Brick(domain_size, element_number, element_shape)
+ref_mesh = construct_TotalMesh(vert, connections)
 
 @Takeout (vertices, faces) FROM ref_mesh
 facet_IDs = get_BoundaryMesh(ref_mesh)
@@ -26,11 +26,11 @@ facet_IDs_back = facet_IDs[(x2_mean .< (L_box .+ err_scale)) .& (x2_mean .> (L_b
 facet_IDs_bottom = facet_IDs[(x3_mean .< err_scale) .& (x3_mean .> (.- err_scale))]
 facet_IDs_top = facet_IDs[(x3_mean .< (L_box .+ err_scale)) .& (x3_mean .> (L_box .- err_scale))]
 
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-fix_bg_ID = add_Boundary(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
-free_bg_ID = add_Boundary(wp_ID, vcat(facet_IDs_front, facet_IDs_bottom, facet_IDs_top); fem_domain = fem_domain) #bottom & right & front free
-back_bg_ID = add_Boundary(wp_ID, facet_IDs_back; fem_domain = fem_domain) #back will be loaded
-right_bg_ID = add_Boundary(wp_ID, facet_IDs_right; fem_domain = fem_domain) #top will be loaded
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+fix_bg_ID = add_Boundary!(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
+free_bg_ID = add_Boundary!(wp_ID, vcat(facet_IDs_front, facet_IDs_bottom, facet_IDs_top); fem_domain = fem_domain) #bottom & right & front free
+back_bg_ID = add_Boundary!(wp_ID, facet_IDs_back; fem_domain = fem_domain) #back will be loaded
+right_bg_ID = add_Boundary!(wp_ID, facet_IDs_right; fem_domain = fem_domain) #top will be loaded
 
 Δx = L_box / e_number
 E = 1
@@ -53,19 +53,19 @@ E = 1
     WF_back_bdy = Bilinear(d{i}, σ²{i,j} * n{j})
 end
 
-assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, fix_bg_ID, WF_fixed_bdy; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, right_bg_ID, WF_right_bdy; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, back_bg_ID, WF_back_bdy; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, fix_bg_ID, WF_fixed_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, right_bg_ID, WF_right_bdy; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, back_bg_ID, WF_back_bdy; fem_domain = fem_domain)
 
-initialize_LocalAssembly(fem_domain)
+initialize_LocalAssembly!(fem_domain)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 compile_Updater_GPU(; domain_ID = 1, fem_domain = fem_domain)
 
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
 end
-assemble_Global_Variables(; fem_domain = fem_domain)
+assemble_Global_Variables!(; fem_domain = fem_domain)
 fem_domain.linear_solver = solver_LU_CPU
 fem_domain.globalfield.converge_tol = 1e-5
 
@@ -89,8 +89,9 @@ plot_labels = [String[] for i = 1:2]
 σ_external = 1e6
 cpts.σˡ6 .= σ_external
 cpts.σ²2 .= 0
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 y_plot_ana = σ_external * L_box/(6 * E * I) * (3 * l .-  x_plot) .* x_plot .^ 2
 y_plot_num = cpts.d2[horizontal_mid_cp_IDs] |> collect
@@ -103,8 +104,9 @@ push!(plot_labels[2], "Concentrated load, MetaFEM")
 
 cpts.σˡ6 .= 0
 cpts.σ²2 .= σ_external
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 y_plot_ana = σ_external / (24 * E * I) * (x_plot.^2 .+ 6 * l ^ 2 .- 4 * l .* x_plot) .* x_plot .^ 2
 y_plot_num = cpts.d2[horizontal_mid_cp_IDs] |> collect
@@ -116,8 +118,9 @@ push!(plot_labels[1], "Uniform pressure, analytical")
 push!(plot_labels[2], "Uniform pressure, MetaFEM")
 
 cpts.σ²2 .= σ_external .* (1. .- cpts.x1 ./ (L_box * LW_ratio))
-update_OneStep(fem_domain.time_discretization; fem_domain = fem_domain)
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+
+update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 y_plot_ana = σ_external / (120 * l * E * I) * (10 * l ^ 3 .- 10 * l^2 .* x_plot .+ 5 * l * x_plot .^ 2 .- x_plot .^ 3) .* x_plot .^ 2
 y_plot_num = cpts.d2[horizontal_mid_cp_IDs] |> collect

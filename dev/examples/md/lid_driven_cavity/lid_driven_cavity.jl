@@ -7,8 +7,8 @@ domain_size = (L_box, L_box)
 element_number = (e_number, e_number)
 element_shape = :CUBE
 
-vertices, connections = make_Square(domain_size, element_number, element_shape)
-ref_mesh = construct_TotalMesh(vertices, connections)
+vert, connections = make_Square(domain_size, element_number, element_shape)
+ref_mesh = construct_TotalMesh(vert, connections)
 
 @Takeout (vertices, segments) FROM ref_mesh
 sIDs = get_BoundaryMesh(ref_mesh)
@@ -25,9 +25,9 @@ sIDs_right = sIDs[(x1_mean .< (L_box .+ err_scale)) .& (x1_mean .> (L_box .- err
 sIDs_bottom = sIDs[(x2_mean .< err_scale) .& (x2_mean .> (.- err_scale))]
 sIDs_top = sIDs[(x2_mean .< (L_box .+ err_scale)) .& (x2_mean .> (L_box .- err_scale))]
 
-wp_ID = add_WorkPiece(ref_mesh; fem_domain = fem_domain)
-fixed_bg_ID = add_Boundary(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
-top_bg_ID = add_Boundary(wp_ID, sIDs_top; fem_domain = fem_domain)
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+fixed_bg_ID = add_Boundary!(wp_ID, vcat(sIDs_left, sIDs_bottom, sIDs_right); fem_domain = fem_domain)
+top_bg_ID = add_Boundary!(wp_ID, sIDs_top; fem_domain = fem_domain)
 
 Δx = L_box / e_number
 ρ = 1e3
@@ -63,23 +63,24 @@ end
     WF_boundary_fix = NS_boundary_BASE + NS_boundary_FIX
 end
 
-assign_WorkPiece_WeakForm(wp_ID, WF_domain; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
-assign_Boundary_WeakForm(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
+assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
+assign_Boundary_WeakForm!(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
 
-initialize_LocalAssembly(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 
 @time begin
     for wp in fem_domain.workpieces
         update_Mesh(fem_domain.dim, wp, wp.element_space)
     end
-    assemble_Global_Variables(fem_domain = fem_domain)
+    assemble_Global_Variables!(fem_domain = fem_domain)
     compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 end
 
-fem_domain.linear_solver = solver_LU_CPU # CPU LU is practically faster
-fem_domain.globalfield.converge_tol = 1e-4
+fem_domain.linear_solver = solver_LU_CPU # Note if we want to use an iterative solver for high Re number, many may be unstable, bicgstabl_GS! is recommanded as the most stable one, e.g.,
+
+fem_domain.globalfield.converge_tol = 1e-6
 
 cpts = fem_domain.workpieces[1].mesh.controlpoints
 @Takeout x1, x2, u1 FROM cpts
@@ -96,7 +97,7 @@ for Re in Re_arr
     u_st = Re / L_box * μ / ρ
     fem_domain.globalfield.x .= 0.
     fem_domain.globalfield.t = 0.
-    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+    dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
     tmax = Re > 1000 ? 10 : ceil(Re / 100) |> Int
     for i = 1:tmax
@@ -104,15 +105,15 @@ for Re in Re_arr
         cp_IDs = findall(cpts.is_occupied)
 
         u_top = u_st * (i / tmax)
-        dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+        dt = fem_domain.globalfield.dt = 0.2 * Δx / u_top
 
         cpts.uʷ1[cp_IDs] .= u_top
         cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
         cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
 
         println("Timestep ", i, " velocity = ", u_top, " tol = ", fem_domain.globalfield.converge_tol)
-        update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
-        dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+        update_OneStep!(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+        dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
     end
     filename = string("Ghia_Re", Re, ".csv")
     file_data = CSV.read(joinpath(@__DIR__, filename), DataFrame)
@@ -142,7 +143,7 @@ Re = 1000
 u_st = Re / L_box * μ / ρ
 fem_domain.globalfield.x .= 0.
 fem_domain.globalfield.t = 0
-dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 tmax = Re > 1000 ? 10 : ceil(Re / 100) |> Int
 for i = 1:tmax
@@ -150,15 +151,15 @@ for i = 1:tmax
     cp_IDs = findall(cpts.is_occupied)
 
     u_top = u_st * (i / tmax)
-    dt = fem_domain.time_discretization.dt = 0.2 * Δx / u_top
+    dt = fem_domain.globalfield.dt = 0.2 * Δx / u_top
 
     cpts.uʷ1[cp_IDs] .= u_top
     cpts.τᵐ[cp_IDs] .= (4 / dt ^ 2 + 9 * 16 * ν ^ 2 * dim * Δx ^ (-4) .+ Δx ^ (-2) * (cpts.u1[cp_IDs] .^ 2. + cpts.u2[cp_IDs] .^ 2.)) .^ (-0.5)
     cpts.τᶜ[cp_IDs] .= (cpts.τᵐ[cp_IDs] .* (dim * Δx ^ (-2))) .^ (-1.)
 
     println("Timestep ", i, " velocity = ", u_top, " tol = ", fem_domain.globalfield.converge_tol)
-    update_OneStep(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
-    dessemble_X(fem_domain.workpieces, fem_domain.globalfield)
+    update_OneStep!(fem_domain.time_discretization; max_iter = 6, fem_domain = fem_domain)
+    dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 end
 
 wp = fem_domain.workpieces[1]
