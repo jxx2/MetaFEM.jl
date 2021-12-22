@@ -13,9 +13,6 @@ Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.
 
 Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev/examples/md/pikachu/pikachu/) and [sources](https://github.com/jxx2/MetaFEM/tree/main/examples), where "*.jl" files are the main scripts. 
 
-## Known Major Issue(s):
-None.
-
 ## Related works (in Julia)
 * [Gridap.jl](https://github.com/gridap/Gridap.jl), is a more classical approach on the generic FEM solver, similar to (a Julia version of) FEniCS/FreeFEM.
 * [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl), is a mesh system/finite element toolbox. 
