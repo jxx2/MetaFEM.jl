@@ -29,7 +29,7 @@ end
 #############################
 function init_Interpolation_Cube_Lagrange(interp_order::Integer, dim::Integer)
     interp_funcs_1D = init_Interpolation_Lagrange_1D(interp_order)
-    template_funcs = [substitute_Polynomial.(interp_funcs_1D, 1, Ref(Polynomial(1., ntuple(x -> x == i ? 1 : 0, dim)))) for i = 1:dim]
+    template_funcs = [substitute_Polynomial.(interp_funcs_1D, 1, Ref(Polynomial(1., basis_Tup(i, dim)))) for i = 1:dim]
 
     result_itp_funcs = Polynomial{dim}[]
     for interp_ids in Iterators.product([1:(interp_order + 1) for i = 1:dim]...)
@@ -47,8 +47,8 @@ function init_Interpolation_Simplex_Lagrange(interp_order::Integer, dim::Integer
     interp_funcs_1D = [Polynomial(1., (0,)), 
     [substitute_Polynomial(init_Interpolation_Lagrange_1D(this_order)[end], 1, Polynomial(interp_order / this_order, (1,))) for this_order = 1:interp_order]...]
 
-    volumetric_coors = [Polynomial(1., ntuple(x -> x == i ? 1 : 0, dim)) for i = 1:dim]
-    push!(volumetric_coors, Polynomial([1., [-1. for i = 1:dim]...], [ntuple(x -> 0, dim), [ntuple(x -> x == i ? 1 : 0, dim) for i = 1:dim]...]))
+    volumetric_coors = [Polynomial(1., basis_Tup(i, dim)) for i = 1:dim]
+    push!(volumetric_coors, Polynomial([1., [-1. for i = 1:dim]...], [const_Tup(0, dim), [basis_Tup(i, dim) for i = 1:dim]...]))
 
     template_funcs = [substitute_Polynomial.(interp_funcs_1D, 1, Ref(volumetric_coors[i])) for i = 1:(dim + 1)]
 

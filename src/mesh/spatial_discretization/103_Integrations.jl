@@ -30,7 +30,7 @@ function init_Boundary_Integration_Cube_Gauss(itg_order::Integer, dim::Integer)
     end
 
     itg_num, face_num = (itg_pos, face_ids) .|> length
-    bdy_itg_pos = [fill(ntuple(x -> 0., dim), itg_num) for i = 1:face_num]
+    bdy_itg_pos = [fill(const_Tup(0., dim), itg_num) for i = 1:face_num]
     bdy_tangent_directions = [zeros(FEM_Float, itg_num, dim, dim - 1) for i = 1:face_num]
 
     for normal_dim = 1:dim
@@ -93,11 +93,11 @@ function _init_Integration_Triangle_Gauss(itg_order::Integer)
 
     for (pos, weight) in zip(GAUSS_POINT_POS_TRIANGLE[id], GAUSS_POINT_WEIGHT_TRIANGLE[id])
         if length(pos) == 0
-            push!(itg_pos, ntuple(x -> 1/3, 3))
+            push!(itg_pos, const_Tup(1/3, 3))
             push!(itg_weight, weight)
         elseif length(pos) == 1
             a = pos[1]
-            append!(itg_pos, [ntuple(x -> x == i ? (1 - 2 * a) : a, 3) for i = 1:3])
+            append!(itg_pos, [basis_Tup(i, 3, (1 - 2 * a), a) for i = 1:3])
             append!(itg_weight, [weight for i = 1:3])
         elseif length(pos) == 2
             c = 1. - sum(pos)
@@ -126,7 +126,7 @@ function init_Boundary_Integration_Triangle_Gauss(itg_order::Integer)
     bdy_itg_weights[2] .*= sqrt(2)
 
     itg_num, face_num, dim = (length(itg_pos), 3, 2)
-    bdy_itg_pos = [fill(ntuple(x -> 0., dim), itg_num) for i = 1:face_num]
+    bdy_itg_pos = [fill(const_Tup(0., dim), itg_num) for i = 1:face_num]
     bdy_tangent_directions = [zeros(FEM_Float, itg_num, dim, dim - 1) for i = 1:face_num]
 
     for i = 1:itg_num
@@ -158,12 +158,12 @@ function _init_Integration_Tetrahedron_Gauss(itg_order::Integer)
 
     for (pos, weight) in zip(GAUSS_POINT_POS_TETRAHEDRON[id], GAUSS_POINT_WEIGHT_TETRAHEDRON[id])
         if length(pos) == 0
-            push!(itg_pos, ntuple(x -> 1/4, 4))
+            push!(itg_pos, const_Tup(1/4, 4))
             push!(itg_weight, weight)
         elseif length(pos) == 1
             a = pos[1]
             if a >= 0
-                append!(itg_pos, [ntuple(x -> x == i ? (1 - 3 * a) : a, 4) for i = 1:4])
+                append!(itg_pos, [basis_Tup(i, 4, (1 - 3 * a), a) for i = 1:4])
                 append!(itg_weight, [weight for i = 1:4])
             else
                 b = -a
@@ -211,7 +211,7 @@ function init_Boundary_Integration_Tetrahedron_Gauss(itg_order::Integer)
     bdy_itg_weights[3] .*= sqrt(3)
 
     itg_num, face_num, dim = (length(itg_pos), 4, 3)
-    bdy_itg_pos = [fill(ntuple(x -> 0., dim), itg_num) for i = 1:face_num]
+    bdy_itg_pos = [fill(const_Tup(0., dim), itg_num) for i = 1:face_num]
     bdy_tangent_directions = [zeros(FEM_Float, itg_num, dim, dim - 1) for i = 1:face_num]
 
     for i = 1:itg_num

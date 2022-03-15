@@ -69,6 +69,7 @@ We provide the following linear solvers:
     idrs_original!
     gmres!
     lsqr!
+    cgs!
 ```
 with the following preconditioners:
 ```@docs

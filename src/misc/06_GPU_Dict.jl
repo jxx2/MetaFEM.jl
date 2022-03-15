@@ -29,8 +29,8 @@ function construct_FEM_Dict(::Type{ArrayType}, data_external::Vector = [], size_
     data_values = Any[values_external..., UInt64(0), UInt64(0), Int32(0), Int32(0), Int32(0)]
     dict_size = _DictSize(size_hint)
 
-    data_vectors = [dvalue isa AbstractArray ? FEM_zeros(ArrayType, eltype(dvalue), size(dvalue)..., dict_size) : FEM_zeros(ArrayType, typeof(dvalue), dict_size) for dvalue in data_values]
-    return FEM_Dict{ArrayType}(Dict(data_names .=> data_vectors), names_external)
+    data_vectors = ArrayType[dvalue isa AbstractArray ? FEM_zeros(ArrayType, eltype(dvalue), size(dvalue)..., dict_size) : FEM_zeros(ArrayType, typeof(dvalue), dict_size) for dvalue in data_values]
+    return FEM_Dict(Dict{Symbol, ArrayType}(data_names .=> data_vectors), names_external)
 end
 
 dumb_FEM_Dict_Init(::Type{ElementType}) where ElementType = dumb_FEM_Dict_Init(DEFAULT_ARRAYINFO._type, ElementType)

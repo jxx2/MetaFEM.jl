@@ -4,8 +4,8 @@ GPU_UnifiedArray{T, N} = CuArray{T, N, CUDA.Mem.UnifiedBuffer} where {T, N}
 mutable struct ArrayDescriptor
     _type::Type
 end
-const DEFAULT_ARRAYINFO = ArrayDescriptor(GPU_DeviceArray)
-# const DEFAULT_ARRAYINFO = ArrayDescriptor(GPU_UnifiedArray)
+# const DEFAULT_ARRAYINFO = ArrayDescriptor(GPU_DeviceArray)
+const DEFAULT_ARRAYINFO = ArrayDescriptor(GPU_UnifiedArray)
 
 for src_func in (:zeros, :ones, :rand)
     FEM_func = Symbol("FEM_$(src_func)")
@@ -13,19 +13,29 @@ for src_func in (:zeros, :ones, :rand)
         $FEM_func(element_type, dims...) = $FEM_func(DEFAULT_ARRAYINFO._type, element_type, dims...)
         $FEM_func(::Type{Array}, ::Type{ElementType}, dims::Number...) where ElementType = $src_func(ElementType, dims...)
         $FEM_func(::Type{GPU_DeviceArray}, ::Type{ElementType}, dims::Number...) where ElementType = (CUDA.$src_func)(ElementType, dims...)
-        $FEM_func(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = cu($src_func(ElementType, dims...); unified = true)
+        # $FEM_func(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = ElementType.(cu($src_func(ElementType, dims...); unified = true))
+        # $FEM_func(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = CuArray{ElementType, length(dims), CUDA.Mem.UnifiedBuffer}($src_func(ElementType, dims...))
     end
 end
+FEM_zeros(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = fill!(CuArray{ElementType, length(dims), CUDA.Mem.UnifiedBuffer}(undef, dims...), zero(ElementType))
+FEM_ones(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = fill!(CuArray{ElementType, length(dims), CUDA.Mem.UnifiedBuffer}(undef, dims...), one(ElementType))
+FEM_rand(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = CUDA.Random.rand!(CuArray{ElementType, length(dims), CUDA.Mem.UnifiedBuffer}(undef, dims...))
+
+FEM_buffer(::Type{GPU_UnifiedArray}, ::Type{ElementType}, dims::Number...) where ElementType = CUDA.zeros(ElementType, dims...)
+FEM_buffer(::Type{ArrayType}, ::Type{ElementType}, dims::Number...) where {ArrayType, ElementType} = FEM_zeros(ArrayType, ElementType, dims...)
 
 FEM_ArrayTypes = (:Array, :GPU_DeviceArray, :GPU_UnifiedArray)
 
 FEM_convert(src) = FEM_convert(DEFAULT_ARRAYINFO._type, src)
 FEM_convert(::Type{Array}, src::Array) = src
-FEM_convert(::Type{Array}, src) = collect(src)
+FEM_convert(::Type{Array}, src::AbstractArray{T,N}) where {T, N} = collect(src)
 FEM_convert(::Type{GPU_DeviceArray}, src::CuArray) = src
-FEM_convert(::Type{GPU_DeviceArray}, src) = cu(src)
+# FEM_convert(::Type{GPU_DeviceArray}, src) = eltype(src).(cu(src))
+FEM_convert(::Type{GPU_DeviceArray}, src::AbstractArray{T,N}) where {T, N} = CuArray{T, N, CUDA.Mem.DeviceBuffer}(src)
+
 FEM_convert(::Type{GPU_UnifiedArray}, src::CuArray) = src
-FEM_convert(::Type{GPU_UnifiedArray}, src) = cu(src; unified = true)
+# FEM_convert(::Type{GPU_UnifiedArray}, src) = eltype(src).(cu(src; unified = true))
+FEM_convert(::Type{GPU_UnifiedArray}, src::AbstractArray{T,N}) where {T, N} = CuArray{T, N, CUDA.Mem.UnifiedBuffer}(src)
 
 function rewrite_Title_ArgTypes(ex::Expr, t_mapping::Dict = Dict())
     for i = 2:length(ex.args)
@@ -72,17 +82,9 @@ macro Dumb_GPU_Kernel(title, atom_content)
     end)) 
 end
 
-@Dumb_GPU_Kernel inc_Num!(num::Array, vals::Array, IDs::Array) begin #num[IDs] .+= vals where IDs can have repeated values
-    CUDA.@atomic num[IDs[thread_idx]] += vals[thread_idx]
-    # CUDA.atomic_add!(pointer(num) + sizeof(eltype(num)) * (IDs[thread_idx] - 1), eltype(num)(vals[thread_idx])) 
-end
-
-@Dumb_GPU_Kernel inc_Num!(num::Array, this_val, IDs::Array) begin #num[IDs] .+= this_val where IDs can have repeated values
-    CUDA.@atomic num[IDs[thread_idx]] += this_val
-    # CUDA.atomic_add!(pointer(num) + sizeof(eltype(num)) * (IDs[thread_idx] - 1), eltype(num)(this_val)) 
-end
-
-function sort_COO!(n::Integer, K_I, K_J) # need to rewrite by distributed bitonic ones
+# FEM_sparse COO -> CSR
+# lacks CPU COO, distributed COD (bitonic sorting)
+function sort_CUSPARSE_COO!(n::Integer, K_I, K_J) # need to rewrite by distributed bitonic ones
     K_length = length(K_I)
     P = Int32.(findall(CUDA.ones(Bool, K_length)) .- 1) #!!!may need to change
     typeof(P)
@@ -97,7 +99,7 @@ function sort_COO!(n::Integer, K_I, K_J) # need to rewrite by distributed bitoni
     end
     return P .+ 1
 end
-
+# lacs CPU & distributed
 for ArrayType in FEM_ArrayTypes
     @eval begin
         function generate_J_ptr(Is::$ArrayType{FEM_Int}, m::Integer)
@@ -115,6 +117,17 @@ shifted_Pointer(arr, offset) = pointer(arr) + sizeof(eltype(arr)) * (offset - 1)
     CUDA.atomic_min!(shifted_Pointer(J_ptr, Is[thread_idx]), eltype(J_ptr)(thread_idx)) 
 end
 
+FEM_SpMat_CSR(J_ptr::CuArray, Js::CuArray, Ks::CuArray, dim::Tuple) = CuSparseMatrixCSR(J_ptr, Js, Ks, Int64.(dim))
+
+@Dumb_GPU_Kernel inc_Num!(num::Array, vals::Array, IDs::Array) begin #num[IDs] .+= vals where IDs can have repeated values
+    CUDA.@atomic num[IDs[thread_idx]] += vals[thread_idx]
+end
+
+@Dumb_GPU_Kernel inc_Num!(num::Array, this_val, IDs::Array) begin #num[IDs] .+= this_val where IDs can have repeated values
+    CUDA.@atomic num[IDs[thread_idx]] += this_val
+end
+
+# LinearAlgebras
 mul!(b::CuVector{T}, A::CuSparseMatrixCSR{T}, x::CuVector{T}, alpha::Number = 1., beta::Number = 0.) where T = CUDA.CUSPARSE.mv!('N', T(alpha), A, x, T(beta), b, 'O')
 tmul!(b::CuVector{T}, A::CuSparseMatrixCSR{T}, x::CuVector{T}, alpha::Number = 1., beta::Number = 0.)  where T = CUDA.CUSPARSE.mv!('T', T(alpha), A, x, T(beta), b, 'O')
 
@@ -122,25 +135,4 @@ function Base.:*(A::CuSparseMatrixCSR{T}, x::CuVector{T}) where T #!!!may need t
     b = CUDA.zeros(T, size(A, 1))
     mul!(b, A, x)
     return b
-end
-
-for A in (CUDA.Mem.DeviceBuffer, CUDA.Mem.UnifiedBuffer)
-    for B in (CUDA.Mem.DeviceBuffer, CUDA.Mem.UnifiedBuffer)
-        (A == CUDA.Mem.DeviceBuffer) && (B == CUDA.Mem.DeviceBuffer) && continue
-        @eval begin
-            function Base.unsafe_copyto!(dest::CuArray{T,<:Any, $A}, doffs,
-                                        src::CuArray{T,<:Any, $B}, soffs, n) where T
-            CUDA.context(dest) == CUDA.context(src) || throw(ArgumentError("copying between arrays from different contexts"))
-            CUDA.@context! CUDA.context(dest) begin
-                GC.@preserve src dest begin
-                unsafe_copyto!(pointer(dest, doffs), pointer(src, soffs), n; async=true)
-                if Base.isbitsunion(T)
-                    unsafe_copyto!(typetagdata(dest, doffs), typetagdata(src, soffs), n; async=true)
-                end
-                end
-            end
-            return dest
-            end
-        end
-    end
 end

@@ -120,11 +120,10 @@ macro Construct(typename)
     return esc(:($typename($(fields...))))
 end
 
-const FEM_Int = Int32 #Note, hashing some GPU FEM_Int like indices may assume last 30 bits in 2D, 20 bits in 3D, so not really needed anything above Int32
-# const FEM_Float = Float32
-const FEM_Float = Float64
+const FEM_Int = Int32 # Note, hashing some GPU FEM_Int like indices may assume last 30 bits in 2D, 20 bits in 3D, so not really needed anything above Int32
+const FEM_Float = Float64 # Double digit make iterative solvers much more robust, since we are still simply Jacobi conditioned
+VTuple(T...) = Tuple{Vararg{T...}}
 
-# Memory profiler, need to re polish for tables
 const _UNITS = Dict{String, Int}(["B", "KB", "MB", "GB", "TB"] .=> [Int(1 << (10 * i)) for i = 0:4])
 mutable struct MemUnit
     u_name::String
@@ -153,7 +152,7 @@ function estimate_msize(x::T, budget::Integer, counter_func::Function) where T
         end
     elseif isa(x, AbstractArray)
 
-    elseif isstructtype(T) # T can't be an abstract array to avoid calculating the memory twice
+    elseif isstructtype(T) # T can't be an abstract array to avoid calculating specific arrays twice, e.g., CuArray
         for fname in fieldnames(T)
             msize += estimate_msize(getfield(x, fname), budget, counter_func)
         end
@@ -171,14 +170,10 @@ estimate_memory_GPU(x, budget::Integer = 0) = estimate_msize(x, budget, GPU_size
 
 report_memory(x, _obj::MemUnit) where N = string("$(estimate_memory_CPU(x)/ _obj.u_size) $(_obj.u_name) CPU memory and $(estimate_memory_GPU(x)/ _obj.u_size) $(_obj.u_name) GPU memory")
 report_memory(x) = report_memory(x, MEM_UNIT)
-
-# Prettier gensym
+# Slightly prettier gensym
 mutable struct PrefixGenerator
     prefix::String
     ID::Int
     PrefixGenerator(prefix::String) = new(prefix, 0)
 end
-function (_obj::PrefixGenerator)(x)
-    _obj.ID += 1
-    Symbol("$(_obj.prefix)_$(_obj.ID)_$x")
-end
+(_obj::PrefixGenerator)(x = "") = Symbol("$(_obj.prefix)_$(_obj.ID+=1)_$x")

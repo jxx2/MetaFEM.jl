@@ -39,7 +39,7 @@ function mesh_Classical(wp_IDs; shape::Symbol, itp_type::Symbol = :Lagrange, itp
 end
 
 function declare_Basic_ControlPoint(dim::Integer, wp::WorkPiece{ArrayType}) where {ArrayType}
-    @Takeout (local_innervar_infos, local_extervars) FROM wp.local_assembly
+    @Takeout (local_innervar_infos, controlpoint_extervars) FROM wp.local_assembly
 
     global_cpID, element_num = (0, 0) .|> FEM_Int
     if dim == 2
@@ -50,7 +50,7 @@ function declare_Basic_ControlPoint(dim::Integer, wp::WorkPiece{ArrayType}) wher
         controlpoints = @Construct Basic_ControlPoint3D
     end
     local_innervars = getindex.(local_innervar_infos, 1)
-    return construct_FEM_Table(ArrayType, controlpoints, Symbol[local_innervars..., local_extervars...] .=> FEM_Float(0.))
+    return construct_FEM_Table(ArrayType, controlpoints, Symbol[local_innervars..., controlpoint_extervars...] .=> FEM_Float(0.))
 end
 
 function declare_Basic_Facet(dim::Integer, this_space::Classical_Discretization{ArrayType}) where {ArrayType}

@@ -37,7 +37,7 @@ function Hessenberg(H::AbstractMatrix, rhs::AbstractVector)
 end
 
 """
-    gmres!(x, A, b; Pl = Identity(), tol::Real, maxiter::Integer, s = 20, kwargs...)
+    gmres!(x, A, b, r; Pl = Identity(), tol::Real, maxiter::Integer, s = 20, kwargs...)
 
 Vanilla GMRES solver which restarts every s = 20 iteration. GMRES may enter early stagnation and leave with large residue/error.
 """
@@ -45,12 +45,14 @@ gmres!
 
 for ArrayType in FEM_ArrayTypes
     @eval begin
-        function gmres!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s = 20, kwargs...) where {Tb}
-            r = Pl(b - A * x)
+        function gmres!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}, r::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s = 20, kwargs...) where {Tb}
+            mul!(r, A, x, -1.)
+            r .+= b
+            Pl(r)
             (normalized_norm(r) <= tol) && return 0
             iter = 1
             Lb = length(b)
-            Q = $ArrayType{Tb, 1}[FEM_zeros($ArrayType, Tb, Lb) for k in 1:(s + 1)]
+            Q = [FEM_buffer($ArrayType, Tb, Lb) for k in 1:(s + 1)]
             H, y = Matrix{Tb}(undef, s + 1, s), zeros(Tb, s + 1)
             r_norm = norm(r)
             y[1] = r_norm

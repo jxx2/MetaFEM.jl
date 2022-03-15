@@ -3,6 +3,7 @@
 # ![flow](cylinderflow.png)
 # First, we load the package and declare the domain:
 using MetaFEM
+initialize_Definitions!()
 dim = 3
 fem_domain = FEM_Domain(; dim = dim)
 # ## Geometry

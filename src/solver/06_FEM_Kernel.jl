@@ -31,7 +31,6 @@ end
 
     this_elID = elIDs[thread_idx]
     this_itghostID = itg_hostIDs[thread_idx]
-    #this_sparse_ID = sparse_start_ID + (thread_idx - 1) * itp_num * itp_num #Not thread_idx or elID, but position in elID
     for this_dual_id = 1:itp_num
         for this_base_id = 1:itp_num
             this_sparse_ID = sparse_IDs_by_el[this_dual_id, this_base_id, this_elID] + sparse_ID_shift

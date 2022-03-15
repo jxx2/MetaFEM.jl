@@ -2,7 +2,7 @@ gen_Kernel_Name(prefix::String, max_sd_order::Integer, dim::Integer) = Symbol(st
 function gen_BasicDomain_Funcs(dim::Integer)    
     ID_for_no_diff = fill(1, dim)
     jac_block = :(begin
-        X_IDs = ntuple(x -> x == X_dim ? 2 : 1, $dim)
+        X_IDs = basis_Tup(X_dim, $dim, 2, 1)
     end)
     for this_dim = 1:dim
         x_sym = Symbol("x$(this_dim)")
@@ -35,7 +35,7 @@ end
 function gen_BasicBoundary_Funcs(dim::Integer)
     ID_for_no_diff = fill(1, dim)
     jac_block = :(begin
-        X_IDs = ntuple(x -> x == X_dim ? 2 : 1, $dim)
+        X_IDs = basis_Tup(X_dim, $dim, 2, 1)
     end)
     for this_dim = 1:dim
         x_sym = Symbol("x$(this_dim)")
@@ -121,7 +121,7 @@ end
 end
 
 #sd_ids: repeatable dimension numbers, e.g., (1,1,1,3), sd_IDs: table of diff order .+ 1 for indexing, e.g., (4,1,2) , i.e., 3 times diff on dim 1, no diff on dim 2 and 1 diff on dim 3
-sd_ids_To_sd_IDs(dim::Integer, sd_ids) = isempty(sd_ids) ? ntuple(x -> 1, dim) : ntuple(x -> sum(sd_ids .== x) + 1, dim) 
+sd_ids_To_sd_IDs(dim::Integer, sd_ids) = (isempty(sd_ids) ? fill(1, dim) : [sum(sd_ids .== i) + 1 for i = 1:dim]) |> Tuple
 function gen_Kernel_Itpval(max_sd_order::Integer, dim::Integer)
     content = Expr(:block)
     itpval_kernel = gen_Kernel_Name("update_Basic_itgval_", max_sd_order, dim)
@@ -216,7 +216,7 @@ end
         rn_1 =   t2_1 * t3_2 - t3_1 * t2_2
         rn_2 = - t1_1 * t3_2 + t3_1 * t1_2
         rn_3 =   t1_1 * t2_2 - t2_1 * t1_2
-        # local_det = dets[itg_id, this_ID] = CUDA.sqrt(CUDA.pow(rn_1, 2) + CUDA.pow(rn_2, 2) + CUDA.pow(rn_3, 2))
+
         local_det = sqrt(rn_1 ^ 2. + rn_2 ^ 2. + rn_3 ^ 2.)
         dets[itg_id, this_ID] = local_det
 

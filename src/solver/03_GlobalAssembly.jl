@@ -104,7 +104,6 @@ function assemble_SparseID!(workpieces::Vector{WorkPiece{ArrayType}}, globalfiel
         
         unsorted_keys = cp_cp_2_sparseID.keys[total_dict_IDs]
         unsorted_dict_IDs = FEM_Dict_GetID(cp_cp_2_sparseID, unsorted_keys)
-        # sorted_dict_IDs = FEM_Dict_GetID(cp_cp_2_sparseID, sort!(unsorted_keys))
 
         local_sparse_ids = findall(FEM_ones(ArrayType, Bool, this_unitsize)) .+ last_sparse_ID
         cp_cp_2_sparseID.vals[unsorted_dict_IDs] .= local_sparse_ids
@@ -128,7 +127,7 @@ function assemble_SparseID!(workpieces::Vector{WorkPiece{ArrayType}}, globalfiel
     globalfield.K_J = FEM_zeros(ArrayType, FEM_Int, last_sparse_ID)
     assemble_KIJ!(workpieces, globalfield, cp_cp_2_sparseID_dicts)
 
-    globalfield.K_val_ids = sort_COO!(length(globalfield.residue), globalfield.K_I, globalfield.K_J) #later save the space
+    globalfield.K_val_ids = sort_CUSPARSE_COO!(length(globalfield.residue), globalfield.K_I, globalfield.K_J) #later save the space
     
     globalfield.K_J_ptr = generate_J_ptr(globalfield.K_I, globalfield.basicfield_size)
 

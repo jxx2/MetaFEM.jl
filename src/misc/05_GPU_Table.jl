@@ -40,7 +40,6 @@ function extend!(this_table::FEM_Table{ArrayType}, final_size::Integer) where {A
             effective_ranges = Colon().(1, effective_dims)
             new_arr = FEM_zeros(ArrayType, eltype(arr), effective_dims..., final_size)
             new_arr[effective_ranges..., allocated_IDs] .= arr[effective_ranges..., allocated_IDs]
-            # new_arr[:, allocated_IDs] .= arr[:, allocated_IDs] 
         end            
         _data[name] = new_arr
     end

@@ -164,7 +164,7 @@ end
 
 @Dumb_GPU_Kernel specify_eindex(f_pos, face_facet_mapping::Array, cell_face_IDs::Array, f_el_ID::Array, eindex::Array, outer_f_el_ID::Array, outer_eindex::Array, elIDs::Array) begin
     this_elID = elIDs[thread_idx]
-    # this_face_ID = cell_face_IDs[f_pos, this_elID]
+
     this_facet_ID = face_facet_mapping[cell_face_IDs[f_pos, this_elID]]
     this_facet_ID == 0 && return
 

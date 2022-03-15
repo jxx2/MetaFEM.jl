@@ -1,9 +1,10 @@
+using Base: NonReshapedReinterpretArray
 """
-    write_VTK(fname::String, wp::WorkPiece; scale = 1.)
+    write_VTK(fname::String, wp::WorkPiece; scale = 1., shift_sym = :none)
 
-Output all the variables in `WorkPiece` `wp` to file `fname`. The `scale` is only for the length scale, i.e., node coordinates.
+Output all the variables in `WorkPiece` `wp` to file `fname`. If the `shift_sym` is not `:none`, the coordinates will be shifted by the corresponding variable. The coordinates will also be scaled by`scale`.
 """
-function write_VTK(fname::String, wp::WorkPiece; scale = 1.)
+function write_VTK(fname::String, wp::WorkPiece; scale = 1., shift_sym = :none)
     @Takeout (element_space.element_attributes, local_assembly.local_innervar_infos) FROM wp
     @Takeout (controlpoints, elements) FROM wp.mesh
     
@@ -17,6 +18,12 @@ function write_VTK(fname::String, wp::WorkPiece; scale = 1.)
 
     x1s = controlpoints.x1[raw_cp_IDs] 
     x2s = controlpoints.x2[raw_cp_IDs] 
+
+    if shift_sym != :none
+        x1s .+= get_Data(controlpoints)[Symbol("$(shift_sym)1")][raw_cp_IDs]
+        x2s .+= get_Data(controlpoints)[Symbol("$(shift_sym)2")][raw_cp_IDs]
+    end
+
     if dim == 2
         xs = hcat(x1s, x2s, zeros(FEM_Float, size(x1s))) |> collect
         if shape == :CUBE
@@ -57,7 +64,12 @@ function write_VTK(fname::String, wp::WorkPiece; scale = 1.)
             error("Wrong shape")
         end
     elseif dim == 3
-        x3s = controlpoints.x3[raw_cp_IDs] 
+        x3s = controlpoints.x3[raw_cp_IDs]
+
+        if shift_sym != :none
+            x3s .+= get_Data(controlpoints)[Symbol("$(shift_sym)3")][raw_cp_IDs]
+        end
+
         xs = hcat(x1s, x2s, x3s) |> collect
         if shape == :CUBE
             if element_attributes[:itp_type] == :Lagrange

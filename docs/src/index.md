@@ -1,5 +1,5 @@
 # MetaFEM.jl
-Welcome to MetaFEM, a GPU-accelerated generic finite element solver by meta-expressions. 
+Welcome to MetaFEM, a GPU-accelerated generic finite element solver. 
 
 ## Overview
 Function-wise, MetaFEM is similar to a skeleton version of FEniCS or FreeFEM, i.e., MetaFEM takes in some high-level mathematical expressions (PDE weak-forms) and a mesh, e.g., thermal conduction in a pikachu, then outputs the corresponding simulation, e.g., to VTK files, resulting in something similar to the logo through common softwares like Paraview. Different from the classical approaches, however, MetaFEM uses only the most fundamental concepts,
@@ -13,8 +13,8 @@ MetaFEM contains:
 3. A FEM kernel which assembles everything, generates the code and solve it; and
 4. The infrastructure to put the simulation on GPU.
 
-Examples of 2D/3D thermal conduction, linear elasticity and incompressible flow are readily usable, starting with the pikachu case are [here](https://jxx2.github.io/MetaFEM.jl/dev/examples/md/pikachu/pikachu/) while
-the source files with all/most relevant data can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples), which can be another good starting point if you want a quick try and don't want to read the rest of the document. 
+A few examples are readily usable, starting with the pikachu case are [here](https://jxx2.github.io/MetaFEM.jl/dev/examples/md/pikachu/pikachu/) while
+the source files with all/most relevant data can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples), which can be another good starting point (since the code is updated more frequently than the document). 
 In each subfolder of the source files, the *.jl file is the main script that actually works. Paraview state file(s) *.pvsm may be also helpful for quick visualization, by open Paraview-File-Load State.
 
 !!! note

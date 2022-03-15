@@ -4,7 +4,8 @@ mutable struct GeneralAlpha <: FEM_Temporal_Discretization
     beta_params::Vector{FEM_Float}
     K_params::Vector{FEM_Float}
 end
-GeneralAlpha() = GeneralAlpha((1., 1., 1.) .|> FEM_Float, (0.5, 0.5) .|> FEM_Float, FEM_Float[], FEM_Float[])
+GeneralAlpha(; dissipative::Bool = false) = GeneralAlpha((1., 1., 1.) .|> FEM_Float, (dissipative ? (1., 1.) : (0.5, 0.5)) .|> FEM_Float, FEM_Float[], FEM_Float[])
+# GeneralAlpha() = GeneralAlpha((1., 1., 1.) .|> FEM_Float, (0.5, 0.5) .|> FEM_Float, FEM_Float[], FEM_Float[])
 
 function update_Time!(globalfield::GlobalField, time_discretization::GeneralAlpha)
     globalfield.t += globalfield.dt
@@ -61,7 +62,7 @@ function update_OneStep!(time_discretization::GeneralAlpha; max_iter::Integer = 
     update_Time!(globalfield, time_discretization)
     initialize_dx!(globalfield, time_discretization)
     fem_domain.K_linear_func(time_discretization; fem_domain = fem_domain)
-    counter = 0
+    counter = -1
     while true
         update_x_star!(globalfield, time_discretization)
         @time fem_domain.K_nonlinear_func(time_discretization; fem_domain = fem_domain)

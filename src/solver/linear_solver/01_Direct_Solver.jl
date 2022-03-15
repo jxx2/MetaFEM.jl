@@ -58,7 +58,7 @@ function solver_QR_GPU(globalfield::GlobalField{ArrayType}; reorder::Integer = 1
     K_vals = K_total[K_val_ids]
     A = CuSparseMatrixCSR(CuSparseMatrixCOO{FEM_Float}(K_I, K_J, K_vals))
     b = residue
-    x = FEM_zeros(ArrayType, FEM_Float, length(residue))
+    x = FEM_buffer(ArrayType, FEM_Float, length(residue))
 
     println("GPU QR solver (csrlsvqr) with initial res = $(normalized_norm(b))and target res = $converge_tol")
     csrlsvqr!(A, b, x, eltype(x)(singular_tol), Cint(reorder), 'O')

@@ -4,6 +4,7 @@
 #
 # First, we load the package and declare the domain:
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(dim = 3)
 # ## Geometry
 # For cuboid geometry we have helper functions "make\_Square"/"make\_Brick" for 2D/3D:
@@ -74,8 +75,8 @@ E = 1
 @Def σ{i,j} = λ * δ{i,j} * ε{m,m} + 2. * μ * ε{i,j}
 @Def Elastrostatic_Domain = - Bilinear(ε{i,j}, σ{i,j})
 
+WF_domain = Elastrostatic_Domain
 @Def begin
-    WF_domain = Elastrostatic_Domain
     WF_fixed_bdy = τᵇ * Bilinear(d{i}, (dʷ{i} - d{i}))
 
     WF_right_bdy = Bilinear(d{i}, σˡ{i,j} * n{j})

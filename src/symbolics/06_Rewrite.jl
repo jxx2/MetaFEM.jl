@@ -1,142 +1,142 @@
-function match_GeneralTerm(this_node::GroundTerm, check_terms::Tuple, matcher::Matcher, matching_info::Vector)
-    isempty(check_terms) && return false, ()
-    return check_terms[1] == this_node, check_terms[2:end]
-end
-
-function match_GeneralTerm(this_node::FixSubtermVariable, check_terms::Tuple, matcher::Matcher, matching_info::Vector)
-    @Takeout (syms, nodes_2_syms, is_independent) FROM matcher
-    node_ID, matched_syms, _, _ = matching_info
-
-    isempty(check_terms) && return false, ()
-    this_sym_ID = nodes_2_syms[node_ID]
-    this_term = check_terms[1]
-    if is_independent[node_ID] #new term node
-        checkfunc = get(SEMANTIC_CONSTRAINT, syms[this_sym_ID], always_True)
-        is_match = checkfunc(this_term)
-        is_match && (matched_syms[this_sym_ID] = this_term)
-    else
-        is_match = this_term == matched_syms[this_sym_ID]
-    end
-    return is_match, check_terms[2:end]
-end
-
-function match_GeneralTerm(this_node::FunctionVariable, check_terms::Tuple, matcher::Matcher, matching_info::Vector)
-    @Takeout (syms, nodes_2_syms, is_independent) FROM matcher
-    node_ID, matched_syms, matched_op_nodes, _ = matching_info
-
-    isempty(check_terms) && return false, ()
-    this_sym_ID = nodes_2_syms[node_ID]
-    this_term = check_terms[1]
-    this_term isa SymbolicTerm || return false, ()
-    if this_node.operation_is_fixed
-        is_match = this_term.operation == this_node.operation
-    else
-        if is_independent[node_ID] #new func node
-            checkfunc = get(SEMANTIC_CONSTRAINT, syms[this_sym_ID], always_True)
-            is_match = checkfunc(this_term.operation)
-            is_match && (matched_syms[this_sym_ID] = this_term.operation)
-        else
-            is_match = this_term.operation == matched_syms[this_sym_ID]
-        end
-    end
-    is_match && (matched_op_nodes[node_ID] = this_term)
-    return is_match, check_terms[2:end]
-end
-
-function match_GeneralTerm(this_node::FreeSubtermVariable, check_terms::Tuple, matcher::Matcher, matching_info::Vector)
-    @Takeout (nodes_2_syms, is_independent, size_inferences) FROM matcher
-    node_ID, matched_syms, _, undecidable_node_infos = matching_info
-
-    this_sym_ID = nodes_2_syms[node_ID]
-    max_subterm_length = length(check_terms)
-
-    if is_independent[node_ID] #new free node
-        size_inference = size_inferences[node_ID]
-
-        if size_inference[1] #size can be inferred
-
-            fixnode_number, self_copy_number, dependent_freenode_IDs = size_inference[2:end]
-            prematched_dependent_freenodes = matched_syms[nodes_2_syms[dependent_freenode_IDs]]
-            preoccupied_number = fixnode_number + sum(length.(prematched_dependent_freenodes))
-
-            this_subterm_length = (max_subterm_length - preoccupied_number) / self_copy_number
-            (is_match = isinteger(this_subterm_length)) || return false, ()
-        else # size cant be inferred and need to push the undecidable_node_infos
-            this_subterm_length = node_ID == undecidable_node_infos[end][1] ? pop!(undecidable_node_infos)[3] + 1 : 0
-            is_match = (this_subterm_length <= max_subterm_length) || return false, ()
-            push!(undecidable_node_infos, (node_ID, max_subterm_length, this_subterm_length))
-        end
-        matched_syms[this_sym_ID] = check_terms[1:this_subterm_length]
-    else #old free node
-        matched_subterms = matched_syms[this_sym_ID]
-        this_subterm_length = length(matched_subterms)
-        is_match = (this_subterm_length <= max_subterm_length) && check_terms[1:this_subterm_length] == matched_subterms
-    end
-    return is_match, check_terms[(1 + this_subterm_length):end]
-end
-
-function check_Match(source_term::Union{Number, SymbolicWord}, matcher::Matcher)
-    @Takeout (match_nodes, syms) FROM matcher
-    length(match_nodes) > 1 && return false, Union{GroundTerm, Tuple}[]
-    matching_info = [1, Vector{Union{GroundTerm, Symbol, Tuple}}(undef, length(syms)),
-                        Vector{Union{GroundTerm, Tuple}}(undef, length(match_nodes)),
-                        Tuple{Vararg{FEM_Int, 3}}[(0, 0, 0)]]
-    is_match, _ = match_GeneralTerm(match_nodes[1], (source_term,), matcher, matching_info)
-    return is_match, matching_info[2]
-end
-
-function changing_Failed_Branch(matcher::Matcher, matching_info::Vector)
-    _, matched_syms, matched_op_nodes, undecidable_node_infos = matching_info
-    node_ID, rest_subterm_length, this_subterm_length = undecidable_node_infos[end]
-
-    node_ID == 0 && return false, ()
-    matching_info[1] = node_ID
-
-    matched_syms[matcher.nodes_2_syms[node_ID]:end] .= Ref(())
-    matched_op_nodes[node_ID:end] .= Ref(())
-
-    parent_node_ID = matcher.parent_node_IDs[node_ID]
-    new_check_terms = matched_op_nodes[parent_node_ID].subterms[(end - rest_subterm_length + 1):end]
-
-    is_match, new_subterms = match_GeneralTerm(matcher.match_nodes[node_ID], new_check_terms, matcher, matching_info)
-    return is_match ? (true, new_subterms) : changing_Failed_Branch(matcher, matching_info)
-end
-
-function check_Match(source_term::SymbolicTerm, matcher::Matcher)
-    @Takeout (match_nodes, syms, parent_node_IDs) FROM matcher
-    matching_info = [0, Vector{Union{GroundTerm, Symbol, Tuple}}(undef, length(syms)), #Symbol for operator, tuple for free terms
-                        Vector{Union{GroundTerm, Tuple}}(undef, length(match_nodes)),
-                        Tuple{Vararg{FEM_Int, 3}}[(0, 0, 0)]]
-
-    check_terms = (source_term,)
+function match_Global(source_term, matcher::Matcher, matchinginfo::MatchingInfo)
+    matchinginfo.current_branch = 1
+    node_ID, last_host_subterm_id = 1, 0
+    subterms = [source_term]
+    is_success = true
+    matcher_size = length(matcher.matcher_nodes)
     while true
-        matching_info[1] += 1
-        this_node = match_nodes[matching_info[1]]
-        node_match, check_terms = match_GeneralTerm(this_node, check_terms, matcher, matching_info)
-        if ~(node_match)
-            branch_success, check_terms = changing_Failed_Branch(matcher, matching_info)
-            branch_success || return false, matching_info
+        if is_success
+            (is_success, matched_size) = match_Local!(matcher.matcher_nodes[node_ID], node_ID, last_host_subterm_id, subterms, matcher, matchinginfo)
+        else
+            target_branch = (matchinginfo.current_branch -= 1)
+            (target_branch == 0) && return false # out of stacks, fail
+            node_ID, last_host_subterm_id, _ = matchinginfo.branching_infos[:, target_branch]
+
+            subterms = reset_subterms(node_ID, matcher, matchinginfo)
+            (is_success, matched_size) = match_Subterm!(IDPDT_FREE(), node_ID, last_host_subterm_id, subterms, matcher, matchinginfo, false) 
         end
-        if isempty(check_terms)
-            if matching_info[1] == length(match_nodes)
-                return true, matching_info[2]
-            elseif parent_node_IDs[matching_info[1]] != parent_node_IDs[matching_info[1] + 1]
-                parent_node_ID = parent_node_IDs[matching_info[1] + 1]
-                check_terms = matching_info[3][parent_node_ID].subterms
+
+        is_success || continue
+
+        if matcher.node_tail_length[node_ID] == 0 # is node tail, next should switch
+            if (matched_size + last_host_subterm_id) == length(subterms)
+                (node_ID == matcher_size) && return true #success
+
+                last_host_subterm_id = 0
+                subterms = reset_subterms(node_ID += 1, matcher, matchinginfo)
+            else
+                is_success = false
             end
         else
-            if matching_info[1] == length(match_nodes) || parent_node_IDs[matching_info[1]] != parent_node_IDs[matching_info[1] + 1]
-                branch_success, check_terms = changing_Failed_Branch(matcher, matching_info)
-                branch_success || return false, matching_info
-            end
+            node_ID += 1
+            last_host_subterm_id += matched_size
         end
     end
 end
+get_matched_node(node_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) = matchinginfo.matched_sym_nodes[matcher.node_sym_IDs[node_ID]]
+reset_subterms(node_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) = matchinginfo.matched_parent_nodes[matcher.node_parent_IDs[node_ID]].subterms
 
-embody_GeneralTerm(this_node::GroundTerm, this_match::Dict) = this_node
+function match_Local!(this_node::GroundTerm, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) 
+    (last_host_subterm_id == length(subterms)) && return (false, 1)
+    return (this_node == subterms[last_host_subterm_id + 1]), 1
+end
+function match_Local!(this_node::FunctionVariable, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) 
+    (last_host_subterm_id == length(subterms)) && return (false, 1)
+    target = subterms[last_host_subterm_id + 1]
+    (target isa SymbolicTerm) || return (false, 1)
+    matchinginfo.matched_parent_nodes[node_ID] = target
+    return match_Function!(this_node.tag, this_node.operation, node_ID, target.operation, matcher, matchinginfo), 1
+end
+match_Local!(this_node::SubtermVariable, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) = 
+match_Subterm!(this_node.tag, node_ID, last_host_subterm_id, subterms, matcher, matchinginfo)
+
+match_Function!(::FIXED_OP, node_op::Symbol, node_ID::Integer, target_op::Symbol, matcher::Matcher, matchinginfo::MatchingInfo) = node_op == target_op
+function match_Function!(::IDPDT_OP, node_op::Symbol, node_ID::Integer, target_op::Symbol, matcher::Matcher, matchinginfo::MatchingInfo) 
+    matchinginfo.matched_sym_nodes[matcher.node_sym_IDs[node_ID]] = target_op
+    return checker(target_op)
+end
+match_Function!(::DPDT_OP, node_op::Symbol, node_ID::Integer, target_op::Symbol, checker::Function, matchinginfo::MatchingInfo) = 
+get_matched_node(node_ID, matcher, matchinginfo) == target_op
+
+function match_Subterm!(::IDPDT_SINGLE, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) 
+    (last_host_subterm_id == length(subterms)) && return (false, 1) 
+    sym_ID = matcher.node_sym_IDs[node_ID]
+    matchinginfo.matched_sym_nodes[sym_ID] = subterms[last_host_subterm_id + 1]
+    checker = matcher.sym_constraints[sym_ID]
+    return checker(subterms[last_host_subterm_id + 1]), 1
+end
+
+function match_Subterm!(::DPDT_SINGLE, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo)
+    (last_host_subterm_id == length(subterms)) && return (false, 1)
+    return (get_matched_node(node_ID, matcher, matchinginfo) == subterms[last_host_subterm_id + 1]), 1
+end
+
+function match_Subterm!(::DPDT_FREE, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) 
+    prev_matched_nodes = get_matched_node(node_ID, matcher, matchinginfo)
+    prev_length = length(prev_matched_nodes)
+
+    ((last_host_subterm_id + prev_length) <= length(subterms)) || return (false, prev_length)
+    return (prev_matched_nodes == subterms[last_host_subterm_id .+ (1:prev_length)]), prev_length
+end
+
+function match_Subterm!(::IDPDT_FREE, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo, is_first_entry::Bool = true) 
+    @Takeout (current_branch, branching_infos) FROM matchinginfo
+
+    if is_first_entry
+        branching_infos[1, current_branch] = node_ID
+        branching_infos[2, current_branch] == last_host_subterm_id
+        new_length = (branching_infos[3, current_branch] = 0)
+    else
+        new_length = (branching_infos[3, current_branch] += 1)
+    end
+        
+    sym_ID = matcher.node_sym_IDs[node_ID]
+    occupied_space, infer_num = tail_Space(node_ID, matcher.node_tail_length[node_ID], sym_ID, matcher, matchinginfo) 
+    rest_target_length = length(subterms) - last_host_subterm_id - occupied_space
+
+    if (new_length * infer_num) <= rest_target_length
+        matchinginfo.matched_sym_nodes[sym_ID] = subterms[last_host_subterm_id .+ (1:new_length)]
+        matchinginfo.current_branch += 1
+        return true, new_length # no practical need to check free term
+    else
+        return false, 0
+    end
+end
+
+function match_Subterm!(::IDPDT_INFER, node_ID::Integer, last_host_subterm_id::Integer, subterms::Vector, matcher::Matcher, matchinginfo::MatchingInfo) 
+    sym_ID = matcher.node_sym_IDs[node_ID]
+    occupied_space, infer_num = tail_Space(node_ID, matcher.node_tail_length[node_ID], sym_ID, matcher, matchinginfo) 
+    rest_target_length = length(subterms) - last_host_subterm_id - occupied_space
+
+    inferred_length = rest_target_length / infer_num
+    if isinteger(inferred_length)
+        matchinginfo.matched_sym_nodes[sym_ID] = subterms[last_host_subterm_id .+ (1:Int(inferred_length))]
+        return true, inferred_length # no practical need to check free term
+    else
+        return false, 0
+    end
+end
+
+local_Length(::Union{FIXED_OP, IDPDT_OP, DPDT_OP, FIXED_SINGLE, IDPDT_SINGLE, DPDT_SINGLE}, node_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) = 1
+local_Length(::DPDT_FREE, node_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) = length(get_matched_node(node_ID, matcher, matchinginfo))
+local_Length(::Union{IDPDT_FREE, IDPDT_INFER}, node_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) = 0
+function tail_Space(node_ID::Integer, tail_length::Integer, sym_ID::Integer, matcher::Matcher, matchinginfo::MatchingInfo) 
+    infer_num = 1
+    occupied_space = 0
+    for local_node_ID in ((1:tail_length) .+ node_ID)
+        if matcher.node_sym_IDs[local_node_ID] == sym_ID
+            infer_num += 1
+        else
+            occupied_space += local_Length(get_Tag(matcher.matcher_nodes[local_node_ID]), local_node_ID, matcher, matchinginfo)
+        end
+    end
+    return occupied_space, infer_num
+end
+
+embody_GeneralTerm(this_node::GroundTerm, this_match::Dict) = deepcopy(this_node) #rewriting rule always generate new copies, e.g., in a => a + a, a2 and a3 should be different copies
 function embody_GeneralTerm(this_node::SubtermVariable, this_match::Dict)
     if this_node.sym in keys(this_match)
-        return this_match[this_node.sym]
+        return deepcopy(this_match[this_node.sym])
     elseif this_node.sym in keys(AUX_SYM_DEFINITION)
         this_func, syntactic_symbols = AUX_SYM_DEFINITION[this_node.sym]
         semantic_symbols = [this_match[sym] for sym in syntactic_symbols]
@@ -145,7 +145,6 @@ function embody_GeneralTerm(this_node::SubtermVariable, this_match::Dict)
         error("Wrong syntax")
     end
 end
-
 function embody_GeneralTerm(this_node::FunctionVariable, this_match::Dict)
     semantic_subterms = GroundTerm[]
     for this_syntactic_subnode in this_node.subterms
@@ -156,62 +155,51 @@ function embody_GeneralTerm(this_node::FunctionVariable, this_match::Dict)
             append!(semantic_subterms, this_semantic_subterm)
         end
     end
+
     syntax_operation = this_node.operation
-    if this_node.operation_is_fixed
-        return construct_Term(syntax_operation, semantic_subterms)
+    if this_node.tag isa FIXED_OP
+        semantic_operation = syntax_operation
     else
         if syntax_operation in keys(this_match)
-            return construct_Term(this_match[syntax_operation], semantic_subterms)
+            semantic_operation = this_match[syntax_operation]
         elseif syntax_operation in keys(AUX_SYM_DEFINITION)
             this_func, syntactic_symbols = AUX_SYM_DEFINITION[syntax_operation]
-            semantic_symbols = [this_match[sym] for sym in syntactic_symbols]
-            return construct_Term(this_func(semantic_symbols...), semantic_subterms)
+            semantic_operation = [this_match[sym] for sym in syntactic_symbols]
         end
     end
+    return construct_Term(semantic_operation, semantic_subterms)
 end
 
-function apply_Rule_OneNode(source_term::GroundTerm, this_rule::RewritingRule)
-    @Takeout (matcher, structure_to_produce) FROM this_rule
-    is_match, matched_syms = check_Match(source_term, matcher)
-    return is_match ? (true, embody_GeneralTerm(structure_to_produce, Dict(matcher.syms .=> matched_syms))) : (false, source_term)
+function apply_Rules_One_Node(source_term::GroundTerm, this_rule::RewritingRule)
+    @Takeout (matcher, matchinginfo, structure_to_produce) FROM this_rule
+    is_match = match_Global(source_term, matcher, matchinginfo)
+    return is_match ? (true, embody_GeneralTerm(structure_to_produce, Dict(matcher.syms .=> matchinginfo.matched_sym_nodes))) : (false, source_term)
 end
-
-apply_Rules_OneNode(source_term::Integer, rules::Vector{RewritingRule}) = error(source_term, visualize.(rules))
-function apply_Rules_OneNode(source_term::GroundTerm, rules::Vector{RewritingRule})
-     term_changed = false
-     this_term = source_term
-     for this_rule in rules
-         #Note the judgement term_changed is preserved for collecting history
-         this_check, this_term = apply_Rule_OneNode(this_term, this_rule)
-         term_changed |= this_check
-     end
-     return term_changed, this_term
-end
-
-apply_Rules_All_Node(source_term::Union{FEM_Float, SymbolicWord}, rules::Vector{RewritingRule}) = apply_Rules_OneNode(source_term, rules)
-function apply_Rules_All_Node(source_term::SymbolicTerm, rules::Vector{RewritingRule})
-    recursive_result = apply_Rules_All_Node.(source_term.subterms, Ref(rules))
-    middle_check = ~prod(.~getindex.(recursive_result, 1))
-    new_subterms = getindex.(recursive_result, 2)
-
-    intermediate_term = middle_check ? construct_Term(source_term.operation, collect(new_subterms)) : source_term
-    final_check, final_term = apply_Rules_OneNode(intermediate_term, rules)
-    return final_check || middle_check, final_term
-end
-
-apply_Rules_Recursive(source_term::Union{FEM_Float, SymbolicWord}, rules::Vector{RewritingRule}) = apply_Rules_OneNode(source_term, rules)
-function apply_Rules_Recursive(source_term::SymbolicTerm, rules::Vector{RewritingRule})
-    term_changed, this_term = apply_Rules_All_Node(source_term, rules)
-    return term_changed ? (true, apply_Rules_Recursive(this_term, rules)[2]) : (false, source_term)
-end
-
-macro Compile_Rewrite_Rules(func_name, rule_names)
-    rule_groups = vectorize_Args(rule_names)
-    merged_rules = Expr(:vcat)
-    for rule_group in rule_groups
-        push!(merged_rules.args, :(($rule_group)...))
+function apply_Rules_One_Node(source_term::GroundTerm, rules::Vector{RewritingRule})
+    term_changed, this_term = false, source_term
+    for this_rule in rules
+        this_check, this_term = apply_Rules_One_Node(this_term, this_rule)
+        term_changed |= this_check
     end
-    return esc(:(
-    $func_name(source_term::GroundTerm) = apply_Rules_Recursive(source_term, $merged_rules)
-    ))
+    return term_changed, this_term
+end
+
+apply_Rules(source_term::Union{FEM_Float, SymbolicWord}, rules) = apply_Rules_One_Node(source_term, rules)
+function apply_Rules(source_term::SymbolicTerm, rules)
+    local_changed, this_term = true, source_term
+
+    head_changed = false
+    while local_changed
+        local_changed, this_term = apply_Rules_One_Node(this_term, rules)
+        head_changed |= local_changed
+    end
+
+    subterm_changed = false
+    if this_term isa SymbolicTerm
+        for i = 1:length(this_term.subterms)
+            local_changed, this_term.subterms[i] = apply_Rules(this_term.subterms[i], rules)
+            subterm_changed |= local_changed
+        end
+    end
+    return (head_changed || subterm_changed), refresh_Term(this_term, subterm_changed)
 end

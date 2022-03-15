@@ -25,44 +25,56 @@ roughly cost one more mat-vec mul!(mv!) and one more vec-vec axpy!. The right pr
 A left preconditioner modifies the vector every time a mat-vec mul! occurs, and it can only reduce the iteration number but not ameliorate the (condition number induced) numerical inaccuracy.
 However, left preconditioner can be more complicated, e.g., ILU, than the right preconditioner, for which only Jacobi can be practically applied when the matrix is large (in author's limited knowledge).
 """
-function iterative_Solve!(globalfield::GlobalField{ArrayType}; Sv_func!::Function = idrs!, Pr_func!::Function = Pr_Jacobi!, Pl_func::Function = Identity, max_pass = 4, kwargs...) where {ArrayType <: CuArray}
-        @Takeout (basicfield_size, K_I, K_J, K_J_ptr, K_val_ids, K_total, residue, converge_tol) FROM globalfield
+iterative_Solve!
 
-    K_vals = K_total[K_val_ids]
-    # A = CuSparseMatrixCSR(CuSparseMatrixCOO{FEM_Float}(K_I, K_J, K_vals))
-    A = CuSparseMatrixCSR(K_J_ptr, K_J, K_vals, Int64.((basicfield_size, basicfield_size)))
+for ArrayType in FEM_ArrayTypes
+    @eval begin
+        function iterative_Solve!(globalfield::GlobalField{$ArrayType}; Sv_func!::Function = idrs!, Pr_func!::Function = Pr_Jacobi!, Pl_func::Function = Identity, max_pass = 4, kwargs...)
+                @Takeout (basicfield_size, K_I, K_J, K_J_ptr, K_val_ids, K_total, residue, converge_tol) FROM globalfield
 
-    Pr = Pr_func!(A)
+            K_vals = K_total[K_val_ids]
+            A = FEM_SpMat_CSR(K_J_ptr, K_J, K_vals, (basicfield_size, basicfield_size))
+            
+            Pr = Pr_func!(A)
 
-    Pl = Pl_func(A)
+            Pl = Pl_func(A)
 
-    b = residue
-    x = CUDA.zeros(FEM_Float, length(residue))
-    println("Solver $Sv_func! with initial res = $(normalized_norm(b)) and target res = $converge_tol")
+            b = residue
+            r = copy(b)
 
-    pass_number = 1
-    tol_factor = 1.
-    while true
-        pass_iters = Sv_func!(x, A, b; Pl = Pl, tol = tol_factor * converge_tol, kwargs...)
+            x = FEM_zeros($ArrayType, FEM_Float, length(residue))
+            println("Solver $Sv_func! with initial res = $(normalized_norm(b)) and target res = $converge_tol")
+            println(typeof(x))
+            pass_number = 1
+            tol_factor = 1.
+            while true
+                pass_iters = Sv_func!(x, A, b, r; Pl = Pl, tol = tol_factor * converge_tol, kwargs...)
 
-        #--- re-compute r since in iterative solver r may be indirectly calculated in an incremental way and inaccurate
-        r = b - A * x
-        res = normalized_norm(r)
-        preconditioned_res = normalized_norm(Pl(r)) # r is changed here
-        #---
-        tol_factor = min(preconditioned_res / res, 1.)
+                mul!(r, A, x, -1.)
+                r .+= b
+                # r .= b .- A * x # re-compute r, since in the local iterative solver r may be indirectly calculated in an incremental way and inaccurate
+                res = normalized_norm(r)
 
-        if (res < converge_tol) || (pass_number >= max_pass)
-            println("pass $pass_number with res = $res preconditioned res = $preconditioned_res iter = $pass_iters, break.")
-            break
-        else
-            println("pass $pass_number with res = $res preconditioned res = $preconditioned_res iter = $pass_iters.")
-            println("next pass preconditioned res threshold = $(tol_factor * converge_tol).")
-            pass_number += 1
+                if Pl_func != Identity # If left preconditioned, residue need to be corrected
+                    preconditioned_res = normalized_norm(Pl(r)) 
+                    tol_factor = min(preconditioned_res / res, 1.) 
+                    println("pass $pass_number with res = $res preconditioned res = $preconditioned_res iter = $pass_iters.")
+                else
+                    println("pass $pass_number with res = $res iter = $pass_iters.")
+                end
+
+                if (res < converge_tol) || (pass_number >= max_pass)
+                    println("break")
+                    break
+                else
+                    println("next pass preconditioned res threshold = $(tol_factor * converge_tol).")
+                    pass_number += 1
+                end
+            end
+
+            return Pr(x)
         end
     end
-
-    return Pr(x)
 end
 
 struct _Identity end

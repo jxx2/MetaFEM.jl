@@ -18,23 +18,12 @@ Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev
 * [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl), is a mesh system/finite element toolbox. 
 * [JuliaFEM.jl](https://github.com/JuliaFEM/JuliaFEM.jl), is a solid mechanics solver.
 
-Please feel free to massage me in any form on any other package and I will be very happy to cite your work or collaborate. 
-(The developer/author has very limited knowledge on this matter.)
-
-## Novelty (from other generic FEM solvers)
-MetaFEM is formulated in its own original theory:
-* From the symbolics perspective, MetaFEM is rewriting-based, by [rewriting rules](https://github.com/jxx2/MetaFEM.jl/blob/main/src/symbolics/101_Simplify_Rule.jl), for customization.
-* From the FEM perspective, MetaFEM is based on meta-expressions, which results in a compact codebase and a small API function number, e.g., there is no helper function like grad/∇, div, etc. 
-* From the software perspective, MetaFEM is fully vectorized and GPU-accelerated by design. Core datastructures:
-  * [GPU_Table](https://github.com/jxx2/MetaFEM.jl/blob/main/src/misc/05_GPU_Table.jl), the struct of arrays.
-  * [GPU_Dict](https://github.com/jxx2/MetaFEM.jl/blob/main/src/misc/06_GPU_Dict.jl), the hash table.
-
 ## Current Status
-The package is usable as a single GPU-accelerated generic FEM solver.  
-  
-More features are in developement, e.g., more examples, distributed computing, cutcell mesh, etc.. 
+The package is usable as a single GPU-accelerated generic FEM solver. 
 
-The immediate next step is to make the simulation distributed, denoted by the version v0.2.0, which will be the first formal release allowing a simulation at the practical scale. Before that, any minor bug-fix will be denoted as v0.1.x.
+We will focus on make it a more well-developed toolbox before making it distributed.
+
+In the versions after v0.1.4(included), the package will be under [Attribution-NonCommercial 2.0 Generic License (CC BY-NC 2.0)](https://creativecommons.org/licenses/by-nc/2.0/).
 
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/

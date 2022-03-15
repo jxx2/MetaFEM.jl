@@ -8,8 +8,11 @@ using CUDA.CUSPARSE
 using CUDA.CUSOLVER
 CUDA.allowscalar(false)
 
+# Type
+export FEM_Float, FEM_Int, DEFAULT_ARRAYINFO, FEM_zeros, FEM_ones, FEM_rand, FEM_buffer
+
 # Framework
-export FEM_Domain
+export FEM_Domain, WorkPiece
 export add_WorkPiece!, add_Boundary!
 
 # Mesh
@@ -17,8 +20,10 @@ export make_Square, make_Brick
 export read_Mesh, construct_TotalMesh, get_BoundaryMesh
 
 # Symbolics
-export @Sym, @External_Sym, @Def, visualize, VARIABLE_ATTRIBUTES
+export @Sym, @External_Sym, @Def, FEM_Define!, SymbolicWord, IndexSym, Voigt_ID
+export visualize, initialize_Definitions!, VARIABLE_ATTRIBUTES, DEFINITION_TABLE
 export assign_WorkPiece_WeakForm!, assign_Boundary_WeakForm!
+export @Define_Rewrite_Rule, DIFF_RULES
 
 # Assembly
 export initialize_LocalAssembly!, mesh_Classical, compile_Updater_GPU
@@ -29,7 +34,7 @@ export update_OneStep!, dessemble_X!, assemble_X!
 
 # Linear Solvers
 export solver_LU_CPU, solver_QR_GPU, solver_LU_GPU, iterative_Solve!
-export bicgstabl_GS!, bicgstabl!, idrs!, idrs_original!, gmres!, lsqr!
+export bicgstabl_GS!, bicgstabl!, idrs!, idrs_original!, gmres!, lsqr!, cgs!, cgs2!, tfqmr!
 
 # Preconditioners
 export Identity, Pr_Jacobi!, Pl_Jacobi, Pl_ILU

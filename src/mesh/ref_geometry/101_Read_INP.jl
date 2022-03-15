@@ -3,7 +3,8 @@ is_Keyword_INP(x::String) = ~isnothing(match(r"^\*", x))
 has_Nextline_INP(x::String) = ~isnothing(match(r", *$", x)) # One logical sentence in multiple lines separated by ","
 
 collect_Vec_INP(x::String) = split(strip(isspace, x), ", ")
-get_Block_Content_INP(io) = read_Lines_Until(is_Comment_INP, x -> isempty(x) || is_Keyword_INP(x), io)
+block_Finished(x) = isempty(x) || is_Keyword_INP(x)
+get_Block_Content_INP(io) = read_Lines_Until(is_Comment_INP, block_Finished, io)
 
 function read_INP(io)
     flags = zeros(Bool, 2) #Node and element

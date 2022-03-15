@@ -8,14 +8,14 @@ function modify_Omega(v1, v2)
 end
 
 """
-    idrs!(x, A, b; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...)
+    idrs!(x, A, b, r; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...)
 
 IDRs (induced dimension reduction) solver, adapted from IterativeSolvers.jl.
 """
 idrs!
 
 """
-    idrs_original!(x, A, b; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...)
+    idrs_original!(x, A, b, r; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...)
 
 IDRs (induced dimension reduction) solver, where the "original" suffix is the earlier version doing direct orthogonalization without exploit orthogonality incrementally.
 """
@@ -23,18 +23,20 @@ idrs_original!
 
 for ArrayType in FEM_ArrayTypes
     @eval begin
-        function idrs!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...) where {Tb}
-            r = Pl(b - A * x)
+        function idrs!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}, r::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...) where {Tb}
+            mul!(r, A, x, -1.)
+            r .+= b
+            Pl(r)
             (normalized_norm(r) <= tol) && return 0
             iter = 1
 
             Lb = length(b)
             Ar = zero(b)
-            P = $ArrayType{Tb, 1}[FEM_rand($ArrayType, Tb, Lb) for k in 1:s]
-            U, G = $ArrayType{Tb, 1}[FEM_zeros($ArrayType, Tb, Lb) for k in 1:s], $ArrayType{Tb, 1}[FEM_zeros($ArrayType, Tb, Lb) for k in 1:s]
-            Q, V = FEM_zeros($ArrayType, Tb, Lb), FEM_zeros($ArrayType, Tb, Lb)
+            P = [FEM_rand($ArrayType, Tb, Lb) for k in 1:s]
+            U, G = [FEM_buffer($ArrayType, Tb, Lb) for k in 1:s], [FEM_buffer($ArrayType, Tb, Lb) for k in 1:s]
+            Q, V = FEM_buffer($ArrayType, Tb, Lb), FEM_buffer($ArrayType, Tb, Lb)
             M, f, c = Matrix{Tb}(LinearAlgebra.I, s, s), zeros(Tb, s), zeros(Tb, s) #CPU matrix for Mc = f
-            
+            # println(Tb)
             omega::Tb = 1.
             while true
                 for i in 1:s
@@ -93,16 +95,18 @@ for ArrayType in FEM_ArrayTypes
         end
 
         #not used, not exploiting orthogonality
-        function idrs_original!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...) where {Tb}
-            r = Pl(b - A * x)
+        function idrs_original!(x::$ArrayType{Tb, 1}, A, b::$ArrayType{Tb, 1}, r::$ArrayType{Tb, 1}; Pl = Identity(), tol::Real, maxiter::Integer, s::Integer = 4, kwargs...) where {Tb}
+            mul!(r, A, x, -1.)
+            r .+= b
+            Pl(r)
             (normalized_norm(r) <= tol) && return 0
             iter = 1
 
             Lb = length(b)
             Ar = zero(b)
-            P = $ArrayType{Tb, 1}[FEM_rand($ArrayType, Tb, Lb) for k in 1:s]
-            U, G = $ArrayType{Tb, 1}[FEM_zeros($ArrayType, Tb, Lb) for k in 1:s], $ArrayType{Tb, 1}[FEM_zeros($ArrayType, Tb, Lb) for k in 1:s]
-            Q, V = FEM_zeros($ArrayType, Tb, Lb), FEM_zeros($ArrayType, Tb, Lb)
+            P = [FEM_rand($ArrayType, Tb, Lb) for k in 1:s]
+            U, G = [FEM_buffer($ArrayType, Tb, Lb) for k in 1:s], [FEM_buffer($ArrayType, Tb, Lb) for k in 1:s]
+            Q, V = FEM_buffer($ArrayType, Tb, Lb), FEM_buffer($ArrayType, Tb, Lb)
             M, f, c = zeros(Tb, s, s), zeros(Tb, s), zeros(Tb, s) #CPU matrix for Mc = f
             
             omega::Tb = 1.

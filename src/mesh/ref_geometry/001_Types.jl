@@ -56,7 +56,7 @@ function Geo_TotalMesh2D(::Type{ArrayType}, mesh_type::Symbol) where {ArrayType}
     else
         error("Undefined mesh type")
     end
-    vertex_example = Geo_Vertex2D(ntuple(x -> FEM_Float(0.), 2)...)
+    vertex_example = Geo_Vertex2D(fill(FEM_Float(0.), 2)...)
     segment_example = Geo_Segment(zeros(FEM_Int, 2))
     face_example = Geo_Face(zeros(FEM_Int, vertex_per_face), zeros(FEM_Int, vertex_per_face)) 
     examples = (vertex_example, segment_example, face_example)
@@ -77,7 +77,7 @@ function Geo_TotalMesh3D(::Type{ArrayType}, mesh_type::Symbol) where {ArrayType}
     else
         error("Undefined mesh type")
     end
-    vertex_example = Geo_Vertex3D(ntuple(x -> FEM_Float(0.), 3)...)
+    vertex_example = Geo_Vertex3D(fill(FEM_Float(0.), 3)...)
     segment_example = Geo_Segment(zeros(FEM_Int, 2))
     face_example = Geo_Face(zeros(FEM_Int, vertex_per_face), zeros(FEM_Int, vertex_per_face))
     block_example = Geo_Block(zeros(FEM_Int, vertex_per_block), zeros(FEM_Int, segment_per_block), zeros(FEM_Int, face_per_block))
@@ -86,14 +86,14 @@ function Geo_TotalMesh3D(::Type{ArrayType}, mesh_type::Symbol) where {ArrayType}
 end
 
 function Geo_BoundaryMesh2D(::Type{ArrayType}) where {ArrayType}
-    vertex_example = Geo_Vertex2D(ntuple(x -> FEM_Float(0.), 2)...)
+    vertex_example = Geo_Vertex2D(fill(FEM_Float(0.), 2)...)
     segment_example = Geo_Segment(zeros(FEM_Int, 2))
     examples = (vertex_example, segment_example)
     return Geo_BoundaryMesh2D((construct_FEM_Table.(ArrayType, examples))...)
 end
 
 function Geo_BoundaryMesh3D(::Type{ArrayType}) where {ArrayType}
-    vertex_example = Geo_Vertex3D(ntuple(x -> FEM_Float(0.), 3)...)
+    vertex_example = Geo_Vertex3D(fill(FEM_Float(0.), 3)...)
     segment_example = Geo_Segment(zeros(FEM_Int, 2))
     face_example = Geo_Face(zeros(FEM_Int, 3), zeros(FEM_Int, 3))
     examples = (vertex_example, segment_example, face_example)

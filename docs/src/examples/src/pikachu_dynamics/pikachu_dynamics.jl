@@ -6,11 +6,12 @@
 # surely we can use MetaFEM as a pure spatial discretization package and write the customized timestep marching by ourselves, 
 # as in many other FEM packages. However, MetaFEM also provides an integrated generalized-alpha temporal discretization with only a little extra code, 
 # as in the following script.
-# The source is also in [the same folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid)  as the last one.
+# The source is also in [the same folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid) as the last one.
 #
 # ## Geometry
 # The geometry in the same with the last case:
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(; dim = 3)
 element_shape = :SIMPLEX 
 src_fname = joinpath(@__DIR__, "3D_COMSOL_Mesh.mphtxt") 
@@ -42,7 +43,7 @@ C = 4.184 * 1e3 # C is simply chosen arbitrarily for convenience
 k = 0.6 
 h = 25. 
 Tₑₙᵥ = 273.15 + 20
-
+α = 0.
 @Sym T
 @External_Sym (s, CONTROLPOINT_VAR)
 @Def begin
@@ -53,7 +54,7 @@ assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_domain)
 # ## Assembly
 # No change.
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
@@ -74,11 +75,11 @@ cpts.T[cp_IDs] .= Tₑₙᵥ
 cpts.s[cp_IDs] .= 1600. 
 # Also we need to synchronize the initial temperature distribution by `assemble_X!`:
 assemble_X!(fem_domain.workpieces, fem_domain.globalfield)
-# Finally we simply run 100 timestep and save each timestep in vtk.
-for i = 1:100
+# Finally we simply only run 10 timestep and save each timestep in vtk because writing in VTK is relatively slow (.mp4 is 100 steps).
+for i = 1:10
     update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
     dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
     wp = fem_domain.workpieces[1]
-    write_VTK("$(@__DIR__)\\history\\3D_MetaFEM_Result_$i.vtk", wp; scale = 100)
+    write_VTK(joinpath(@__DIR__, "history", "3D_MetaFEM_Result_$i.vtk"), wp; scale = 100)
 end

@@ -3,28 +3,25 @@ mutable struct Polynomial{dim}
     factors::Vector{FEM_Float}
     orders::Vector{Tuple{Vararg{FEM_Int, dim}}}
 
-    function Polynomial(dim::Integer)
-        new{dim}([FEM_Float(0.)], [ntuple(x -> FEM_Int(0), dim)])
-    end
-
-    function Polynomial(factor::AbstractFloat, order::Tuple)
-        new{length(order)}(FEM_Float[factor], [FEM_Int.(order)])
-    end
-
-    function Polynomial(factors::Vector, orders::Vector)
-        new{length(orders[1])}(FEM_Float.(factors), map(x -> FEM_Int.(x), orders))
-    end
-
-    function Polynomial(example::Polynomial{dim}) where dim
-        new{dim}(copy(example.factors), copy(example.orders))
-    end
+    Polynomial(dim::Integer) = new{dim}([FEM_Float(0.)], [const_Tup(FEM_Int(0), dim)])
+    Polynomial(factor::AbstractFloat, order::Tuple) = new{length(order)}(FEM_Float[factor], [FEM_Int.(order)])
+    Polynomial(factors::Vector, orders::Vector) = new{length(orders[1])}(FEM_Float.(factors), map(x -> FEM_Int.(x), orders))
+    Polynomial(example::Polynomial{dim}) where dim = new{dim}(copy(example.factors), copy(example.orders))
 end
+
+const_Tup(w, dim_num) = Tuple(fill(w, dim_num))
+function basis_Tup(dim_id, dim_num, wi = 1, wo = 0)
+    temp = fill(wo, dim_num)
+    temp[dim_id] = wi
+    return Tuple(temp)
+end
+collect_Basis(dim::Integer) = [Polynomial(1., basis_Tup(i, dim)) for i = 1:dim]
 
 function Base.:+(p1::Polynomial{dim}, num::Number) where dim
     p_ans = Polynomial(p1)
     num == 0. && return p_ans
 
-    this_order = ntuple(x -> FEM_Int(0), dim)
+    this_order = const_Tup(FEM_Int(0), dim)
     matched_id = findfirst(x -> x == this_order, p1.orders)
     if isnothing(matched_id)
         push!(p_ans.factors, num)
@@ -68,7 +65,7 @@ function check_Clear(p1::Polynomial{dim}) where dim
     not_empty = abs.(p1.factors) .>= err
     if sum(not_empty) == 0
         p1.factors = [FEM_Float(0.)]
-        p1.orders = [ntuple(x -> FEM_Int(0), dim)]
+        p1.orders = [const_Tup(FEM_Int(0), dim)]
     else
         p1.factors = p1.factors[not_empty]
         p1.orders = p1.orders[not_empty]
@@ -80,7 +77,7 @@ function Base.:*(p1::Polynomial{dim}, num::Number) where dim
     p_ans = Polynomial(p1)
     if num == 0
         p_ans.factors = [FEM_Float(0.)]
-        p_ans.orders = [ntuple(x -> FEM_Int(0), dim)]
+        p_ans.orders = [const_Tup(FEM_Int(0), dim)]
     else
         p_ans.factors .*= num
     end
@@ -110,7 +107,7 @@ function Base.:*(p1::Polynomial{dim}, p2::Polynomial{dim}) where dim
 end
 
 function Base.:^(p1::Polynomial{dim}, num::Integer) where dim #can be rewrite in to a ^ 4 = (a^2)^2 ...
-    p_ans = Polynomial(FEM_Float(1.), ntuple(x -> FEM_Int(0), dim))
+    p_ans = Polynomial(FEM_Float(1.), const_Tup(FEM_Int(0), dim))
     for i = 1:num
         p_ans *= p1
     end
@@ -151,5 +148,3 @@ function evaluate_Polynomial(p1::Polynomial{dim}, pos::Tuple) where dim
     end
     return sum
 end
-
-collect_Basis(dim::Integer) = [Polynomial(1., ntuple(x -> x == i ? 1 : 0, dim)) for i = 1:dim]

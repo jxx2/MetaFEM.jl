@@ -22,16 +22,15 @@ for foldername in readdir(EXAMPLE_SRC_DIR)
     mdpost(str) = replace(str, "@__CODE__" => code_clean)
     # @example makes Documenter eval in a sandbox module instead of @__Main__ so doesn't work
     Literate.markdown(input, md_folder, postprocess = mdpost, config = Dict(:codefence => ("```julia" => "```")))
-    # Literate.notebook(input, md_folder, execute = false)
 end
 
 SEQUENCED_MD_FILES = [joinpath("examples", "md", foldername, string(foldername, ".md")) for foldername in ["pikachu", "pikachu_dynamics",
-"thermal_stripe", "cantilever", "stress_concentration", "cylinderflow", "lid_driven_cavity"]]
+"thermal_stripe", "cantilever", "stress_concentration", "thermal_elasticity", "hyper_elasticity", "J2plasticity", "cylinderflow", "lid_driven_cavity"]]
 
 makedocs(
     format = Documenter.HTML(prettyurls = haskey(ENV, "GITHUB_ACTIONS")), # disable for local builds
     sitename = "MetaFEM.jl",
-    doctest = false,
+    doctest = true,
     strict = false,
     pages = Any[
         "Home" => "index.md",
