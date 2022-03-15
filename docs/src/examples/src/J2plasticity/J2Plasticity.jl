@@ -257,7 +257,6 @@ for (s_tests, Eb, Ep) in zip(s_test_groups, Eb_groups, Ep_groups)
     strain_updater.Y .= Y_initial
     strain_updater.Eb = Eb
     strain_updater.Ep = Ep
-
     for s in s_tests
         cpts.σˡ1 .= s
         counter = 0
