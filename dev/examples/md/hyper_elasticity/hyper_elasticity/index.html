@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Total-lagrangian hyper-elasticity · MetaFEM.jl</title><script data-outdated-warner src="../../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../../assets/documenter.js"></script><script src="../../../../siteinfo.js"></script><script src="../../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../../"><img src="../../../../assets/logo.png" alt="MetaFEM.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../../">MetaFEM.jl</a></span></div><form class="docs-search" action="../../../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../../pikachu/pikachu/">Thermal conduction in a pikachu</a></li><li><a class="tocitem" href="../../pikachu_dynamics/pikachu_dynamics/">Thermal conduction in a pikachu, dynamic version</a></li><li><a class="tocitem" href="../../thermal_stripe/thermal_stripe/">Various thermal boundary conditions on a 2D stripe</a></li><li><a class="tocitem" href="../../cantilever/cantilever/">Linear elastic cantilever bending</a></li><li><a class="tocitem" href="../../stress_concentration/stress_concentration/">Stress concentration of a hole</a></li><li><a class="tocitem" href="../../thermal_elasticity/thermal_elasticity/">Thermal-hypoelasticity driven beam bending.</a></li><li class="is-active"><a class="tocitem" href>Total-lagrangian hyper-elasticity</a><ul class="internal"><li><a class="tocitem" href="#Geometry"><span>Geometry</span></a></li><li><a class="tocitem" href="#Physics"><span>Physics</span></a></li><li><a class="tocitem" href="#Assembly"><span>Assembly</span></a></li><li><a class="tocitem" href="#Run-and-Gather-Data"><span>Run &amp; Gather Data</span></a></li><li><a class="tocitem" href="#Plots"><span>Plots</span></a></li></ul></li><li><a class="tocitem" href="../../J2plasticity/J2plasticity/">J2 hypo-elastic-plasticity with mixed hardening</a></li><li><a class="tocitem" href="../../cylinderflow/cylinderflow/">Incompressible flow pass a cylinder</a></li><li><a class="tocitem" href="../../lid_driven_cavity/lid_driven_cavity/">Lid-driven cavity</a></li></ul></li><li><a class="tocitem" href="../../../../api/">APIs</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Total-lagrangian hyper-elasticity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Total-lagrangian hyper-elasticity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jxx2/MetaFEM.jl/blob/master/docs/src/examples/src/hyper_elasticity/hyper_elasticity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Total-lagrangian-hyper-elasticity"><a class="docs-heading-anchor" href="#Total-lagrangian-hyper-elasticity">Total-lagrangian hyper-elasticity</a><a id="Total-lagrangian-hyper-elasticity-1"></a><a class="docs-heading-anchor-permalink" href="#Total-lagrangian-hyper-elasticity" title="Permalink"></a></h1><p><img src="../Neo-Hookean_Tensile_Test.png" alt="NH"/> <img src="../Mooney-Rivlin_Tensile_Test.png" alt="NH"/></p><p>Extension to hyper-elasticity is very intuitive. We do a simple uniaxial loading case with the previous beam geometry. The source is <a href="https://github.com/jxx2/MetaFEM.jl/tree/main/examples/hyper_elasticity">here</a>.</p><h2 id="Geometry"><a class="docs-heading-anchor" href="#Geometry">Geometry</a><a id="Geometry-1"></a><a class="docs-heading-anchor-permalink" href="#Geometry" title="Permalink"></a></h2><pre><code class="language-julia hljs">using MetaFEM
+initialize_Definitions!()
+fem_domain = FEM_Domain(dim = 3)
+L_box, e_number, LW_ratio = 1., 4, 10
+domain_size = (L_box * LW_ratio, L_box, L_box)
+element_number = (Int(e_number * LW_ratio), e_number, e_number)
+element_shape = :CUBE
+
+vert, connections = make_Brick(domain_size, element_number, element_shape)
+@time ref_mesh = construct_TotalMesh(vert, connections)
+@Takeout (vertices, faces) FROM ref_mesh
+facet_IDs = get_BoundaryMesh(ref_mesh)
+vIDs = faces.vertex_IDs[:, facet_IDs]
+
+x1_mean = vec(sum(vertices.x1[vIDs], dims = 1)) ./ size(faces.vertex_IDs, 1)
+x2_mean = vec(sum(vertices.x2[vIDs], dims = 1)) ./ size(faces.vertex_IDs, 1)
+x3_mean = vec(sum(vertices.x3[vIDs], dims = 1)) ./ size(faces.vertex_IDs, 1)
+
+err_scale = L_box / e_number * 0.01
+
+facet_IDs_left = facet_IDs[(x1_mean .&lt; err_scale) .&amp; (x1_mean .&gt; (.- err_scale))]
+facet_IDs_right = facet_IDs[(x1_mean .&lt; (L_box * LW_ratio .+ err_scale)) .&amp; (x1_mean .&gt; (L_box * LW_ratio.- err_scale))]
+facet_IDs_front = facet_IDs[(x2_mean .&lt; err_scale) .&amp; (x2_mean .&gt; (.- err_scale))]
+facet_IDs_back = facet_IDs[(x2_mean .&lt; (L_box .+ err_scale)) .&amp; (x2_mean .&gt; (L_box .- err_scale))]
+facet_IDs_bottom = facet_IDs[(x3_mean .&lt; err_scale) .&amp; (x3_mean .&gt; (.- err_scale))]
+facet_IDs_top = facet_IDs[(x3_mean .&lt; (L_box .+ err_scale)) .&amp; (x3_mean .&gt; (L_box .- err_scale))]
+
+wp_ID = add_WorkPiece!(ref_mesh; fem_domain = fem_domain)
+fix_bg_ID = add_Boundary!(wp_ID, facet_IDs_left; fem_domain = fem_domain) #left fixed
+free_bg_ID = add_Boundary!(wp_ID, vcat(facet_IDs_front, facet_IDs_bottom, facet_IDs_top, facet_IDs_back); fem_domain = fem_domain) #bottom &amp; right &amp; front free
+right_bg_ID = add_Boundary!(wp_ID, facet_IDs_right; fem_domain = fem_domain) #top will be loaded</code></pre><h2 id="Physics"><a class="docs-heading-anchor" href="#Physics">Physics</a><a id="Physics-1"></a><a class="docs-heading-anchor-permalink" href="#Physics" title="Permalink"></a></h2><p>The script should be very intuitive without any trick. Only note MetaFEM is able to do symbolic differentiation with respect to an intermediate tensor variable by the built-in function <code>d</code>.</p><pre><code class="language-julia hljs">@Sym d
+@External_Sym (dʷ, CONTROLPOINT_VAR) (Pˡ, CONTROLPOINT_VAR) (C10, GLOBAL_VAR) (C01, GLOBAL_VAR) (λ, GLOBAL_VAR) (τᵇ, GLOBAL_VAR)
+
+@Def begin
+    F{i,j} = δ{i,j} + d{i;j}
+    B{i,j} = F{i,k} * F{j,k}
+    I1 = B{i,i}
+    I2 = 0.5 * (B{i,i} ^ 2 - B{i,j} * B{j,i})
+    J = F{1,i} * F{2,j} * F{3,k} * ϵ{i,j,k}
+    W = C10 * (I1 - 3 - 2 * log(J)) + C01 * (I2 - 3 - 4 * log(J)) + 0.5 * λ * (J - 1) ^ 2 # Mooney-Rivlin
+    P{i,j} = d(W, F{i,j})
+end
+
+@Def begin
+    WF_domain = - Bilinear(F{i,j}, P{i,j})
+    WF_fixed_bdy = τᵇ * Bilinear(d{i}, (dʷ{i} - d{i}))
+    WF_right_bdy = Bilinear(d{i}, Pˡ{i,j} * n{j})
+end
+
+@time begin
+    assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
+    assign_Boundary_WeakForm!(wp_ID, fix_bg_ID, WF_fixed_bdy; fem_domain = fem_domain)
+    assign_Boundary_WeakForm!(wp_ID, right_bg_ID, WF_right_bdy; fem_domain = fem_domain)
+end
+initialize_LocalAssembly!(fem_domain)</code></pre><h2 id="Assembly"><a class="docs-heading-anchor" href="#Assembly">Assembly</a><a id="Assembly-1"></a><a class="docs-heading-anchor-permalink" href="#Assembly" title="Permalink"></a></h2><p>Note the compilation may take a while (~6min on the developer&#39;s machine), which will be optimized in the future release.</p><pre><code class="language-julia hljs">@time mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
+compile_Updater_GPU(; domain_ID = 1, fem_domain = fem_domain)
+
+@time begin
+    for wp in fem_domain.workpieces
+        update_Mesh(fem_domain.dim, wp, wp.element_space)
+    end
+    assemble_Global_Variables!(; fem_domain = fem_domain)
+end</code></pre><h2 id="Run-and-Gather-Data"><a class="docs-heading-anchor" href="#Run-and-Gather-Data">Run &amp; Gather Data</a><a id="Run-and-Gather-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Run-and-Gather-Data" title="Permalink"></a></h2><pre><code class="language-julia hljs">fem_domain.linear_solver = x -&gt; iterative_Solve!(x; Sv_func! = bicgstabl_GS!, maxiter = 3000, max_pass = 10, s = 4)
+
+dx = L_box/e_number
+err_scale = 0.25
+
+cpts = fem_domain.workpieces[1].mesh.controlpoints
+right_cp_IDs = findall((cpts.x1 .&gt; (L_box * LW_ratio) - err_scale * dx) .&amp; (cpts.x1 .&lt; (L_box * LW_ratio) + err_scale * dx))
+left_cp_IDs = findall((cpts.x1 .&gt; - err_scale * dx) .&amp; (cpts.x1 .&lt; err_scale * dx))
+
+fem_domain.globalfield.converge_tol = 1e-5
+
+setups = [(1e6, 1e6, 1e8, 30, 4e5), (1e6, 5e6, 1e8, 30, 5e5), (5e6, 1e6, 1e8, 40, 10e5)] #C10, C01, λ, total step, step load
+P1s_buffer, d1s_buffer = Vector[], Vector[]
+for (_C10, _C01, _λ, total_steps, σ_step) in setups
+    P1s = FEM_Float[]
+    d1s = FEM_Float[]
+
+    fem_domain.workpieces[1].physics.global_vars[:C10] = _C10
+    fem_domain.workpieces[1].physics.global_vars[:C01] = _C01
+    fem_domain.workpieces[1].physics.global_vars[:λ] = _λ
+    fem_domain.workpieces[1].physics.global_vars[:τᵇ] = 1000 * max(_λ, _C10, _C01) / L_box
+
+    cpts.d1 .= 0
+    cpts.d2 .= 0
+    cpts.d3 .= 0
+    assemble_X!(fem_domain.workpieces, fem_domain.globalfield)
+    for i = 1:total_steps
+        println(&quot;Global step $i&quot;)
+
+        σ_load = σ_step * i
+        cpts.Pˡ1 .= σ_load
+
+        update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain, max_iter = 7)
+        dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
+
+        step_d1 = sum(cpts.d1[right_cp_IDs]) / (L_box * LW_ratio * length(right_cp_IDs))
+        push!(d1s, step_d1)
+        push!(P1s, σ_load)
+    end
+    push!(P1s_buffer, P1s)
+    push!(d1s_buffer, d1s)
+end</code></pre><h2 id="Plots"><a class="docs-heading-anchor" href="#Plots">Plots</a><a id="Plots-1"></a><a class="docs-heading-anchor-permalink" href="#Plots" title="Permalink"></a></h2><pre><code class="language-julia hljs">Jac(l1, _C10, _C01, _λ) = l1 * (-(2 * _C10 + 2 * _C01 * l1 ^ 2 + _λ * l1) + sqrt((2 * _C10 + 2 * _C01 * l1 ^ 2 + _λ * l1) ^ 2 + 8 * _C01 * (_λ + 2 * _C10 + 4 * _C01))) / (4 * _C01)
+mooney_Rivlin(l1, _C10, _C01, _λ)  = 2 * _C10 * l1 + 4 * _C01 * Jac(l1, _C10, _C01, _λ) + (_λ * (Jac(l1, _C10, _C01, _λ) - 1) - 2 * _C10 - 4 * _C01) / l1
+
+using Plots
+fig = plot(; size = (900,800), title = &quot;Uniaxial loading on Mooney-Rivlin hyper-elastic materials.&quot;, xlims = (0., 2.2), xticks = 0:0.2:2, ylims = (0., 35), xlabel = &quot;Elongation&quot;, ylabel = &quot;Nominal stress(MPa)&quot;)
+case_num = length(P1s_buffer)
+for i = 1:case_num
+    color_val = (i / case_num + 1) / 2
+    P1s, d1s = P1s_buffer[i], d1s_buffer[i]
+    (_C10, _C01, _λ, _, _) = setups[i]
+    scatter!(fig, d1s, P1s ./ 1e6, markershape = :circle, markersize = 6, color = RGBA(color_val, 0, 0, 1), label = &quot;numerical, C10 = $_C10 Pa, C01 = $_C01 Pa, λ = $_λ Pa&quot;)
+    plot!(fig, d1s, mooney_Rivlin.(d1s .+ 1, _C10, _C01, _λ) ./ 1e6, color = RGBA(0, 0.5, color_val, 1), label = &quot;analytical, C10 = $_C10 Pa, C01 = $_C01 Pa, λ = $_λ Pa&quot;)
+end
+fig.subplots[1].attr[:legend_position] = (0.15, 0.9)
+fig</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../thermal_elasticity/thermal_elasticity/">« Thermal-hypoelasticity driven beam bending.</a><a class="docs-footer-nextpage" href="../../J2plasticity/J2plasticity/">J2 hypo-elastic-plasticity with mixed hardening »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 15 March 2022 22:33">Tuesday 15 March 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

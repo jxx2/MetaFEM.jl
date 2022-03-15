@@ -1,9 +1,10 @@
 # # Linear elastic cantilever bending
 # In this example we simulate a cantilever beam under different loads, as a straightforward check on the elasticity formulation by comparison to the analytical solutions.
-# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/cantilever).
+# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/linear_elasticity/cantilever).
 #
 # First, we load the package and declare the domain:
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(dim = 3)
 # ## Geometry
 # For cuboid geometry we have helper functions "make\_Square"/"make\_Brick" for 2D/3D:
@@ -74,8 +75,8 @@ E = 1
 @Def σ{i,j} = λ * δ{i,j} * ε{m,m} + 2. * μ * ε{i,j}
 @Def Elastrostatic_Domain = - Bilinear(ε{i,j}, σ{i,j})
 
+WF_domain = Elastrostatic_Domain
 @Def begin
-    WF_domain = Elastrostatic_Domain
     WF_fixed_bdy = τᵇ * Bilinear(d{i}, (dʷ{i} - d{i}))
 
     WF_right_bdy = Bilinear(d{i}, σˡ{i,j} * n{j})

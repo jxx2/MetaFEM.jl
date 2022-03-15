@@ -1,4 +1,5 @@
 using MetaFEM
+initialize_Definitions!()
 
 fem_domain = FEM_Domain(; dim = 3)
 
@@ -25,7 +26,7 @@ end
 assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_domain)
 
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 

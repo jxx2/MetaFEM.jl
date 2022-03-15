@@ -3,10 +3,11 @@
 # In an elasticity class, we may learn that the stress concentration factor for a cylinderical hole is 3 while for a spherical hole is 2, as plotted:
 # ![sc](sc.png)
 #
-# In this example do the 3D case, while both 2D/3D source with mesh/data/visualization can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/stress_concentration).
+# In this example do the 3D case, while both 2D/3D source with mesh/data/visualization can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/linear_elasticity/stress_concentration).
 #
 # First, we load the package and declare the domain:
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(dim = 3)
 # ## Geometry
 # The mesh is generated with Abaqus. Note, we have only the first order mesh loader and the higher order mesh is regenerated inside MetaFEM.
@@ -68,7 +69,7 @@ assign_Boundary_WeakForm!(wp_ID, d3_fix_bg_ID, WF_d3_fixed_bdy; fem_domain = fem
 assign_Boundary_WeakForm!(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
 # ## Assembly & Run
 # Note, the code generated in "compile\_Updater\_GPU" is only used by "update\_OneStep" so its position with the mesh update doesn't matter.
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces)
+initialize_LocalAssembly!(fem_domain)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
@@ -87,4 +88,4 @@ update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
 dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 # ## VTK
 wp = fem_domain.workpieces[1]
-write_VTK(string(@__DIR__, "\\", "3D_MetaFEM.vtk"), wp)
+write_VTK(string(@__DIR__, "3D_MetaFEM.vtk"), wp)

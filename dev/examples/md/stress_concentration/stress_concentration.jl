@@ -1,4 +1,5 @@
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(dim = 3)
 
 element_shape = :CUBE
@@ -56,7 +57,7 @@ assign_Boundary_WeakForm!(wp_ID, d2_fix_bg_ID, WF_d2_fixed_bdy; fem_domain = fem
 assign_Boundary_WeakForm!(wp_ID, d3_fix_bg_ID, WF_d3_fixed_bdy; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, loaded_bg_ID, WF_loaded_bdy; fem_domain = fem_domain)
 
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces)
+initialize_LocalAssembly!(fem_domain)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 for wp in fem_domain.workpieces
     update_Mesh(fem_domain.dim, wp, wp.element_space)
@@ -75,7 +76,7 @@ update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
 dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
 wp = fem_domain.workpieces[1]
-write_VTK(string(@__DIR__, "\\", "3D_MetaFEM.vtk"), wp)
+write_VTK(string(@__DIR__, "3D_MetaFEM.vtk"), wp)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 

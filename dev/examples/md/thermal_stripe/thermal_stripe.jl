@@ -1,4 +1,5 @@
 using MetaFEM
+initialize_Definitions!()
 dim = 2
 fem_domain = FEM_Domain(dim = dim)
 
@@ -40,6 +41,7 @@ Tₑₙᵥ = 50. + T₀
 em = 0.7
 σᵇ = 5.669e-8
 
+@Sym T
 @External_Sym (s, CONTROLPOINT_VAR)
 @Def begin
     heat_dissipation = - k * Bilinear(T{;i}, T{;i}) + Bilinear(T, s + α * (Tₑₙᵥ - T))
@@ -51,7 +53,7 @@ assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, fixed_bg_ID, fix_boundary; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, top_bg_ID, conv_rad_boundary; fem_domain = fem_domain)
 
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
@@ -80,15 +82,11 @@ ids = sortperm(num_ys)
 y_sample = [0.0001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.0099] # Sampled from FEATool result
 T_sample = [1086.84,  1086,  1082.73,  1077.63,  1070.24,  1060.78,  1048.83,  1034.63,  1017.81,  998.843,  979.249]
 
-using Plots
 fig = plot(; size=(800,800), title = "Temperature along the middle line x = 1 cm", xticks = 0.:0.002:0.01, xlabel = "y(m)", ylabel = "T(K)" )
 scatter!(fig, y_sample, T_sample, markershape = :rect, markersize = 6, color = RGBA(1, 0, 0, 1), label = "FEATool")
 plot!(fig, num_ys[ids], num_Ts[ids], markershape = :circle, markersize = 3, color = RGBA(0, 0.5, 0.5, 1), markercolor = RGBA(0, 0.5, 0.5, 1), label = "MetaFEM")
 fig.subplots[1].attr[:legend_position] = (0.8, 0.9)
-png(fig, joinpath(@__DIR__, "2D_Thermal_Middle_Line_Plots.png"))
-
-wp = fem_domain.workpieces[1]
-write_VTK(string(@__DIR__, "\\", "2D_Ceramic_Strip.vtk"), wp)
+fig
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 

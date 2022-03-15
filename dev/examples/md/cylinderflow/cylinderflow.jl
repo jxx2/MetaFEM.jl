@@ -1,4 +1,5 @@
 using MetaFEM
+initialize_Definitions!()
 dim = 3
 fem_domain = FEM_Domain(; dim = dim)
 

@@ -1,4 +1,5 @@
 using MetaFEM
+initialize_Definitions!()
 fem_domain = FEM_Domain(; dim = 3)
 element_shape = :SIMPLEX
 src_fname = joinpath(@__DIR__, "3D_COMSOL_Mesh.mphtxt")
@@ -13,7 +14,7 @@ C = 4.184 * 1e3 # C is simply chosen arbitrarily for convenience
 k = 0.6
 h = 25.
 Tₑₙᵥ = 273.15 + 20
-
+α = 0.
 @Sym T
 @External_Sym (s, CONTROLPOINT_VAR)
 @Def begin
@@ -23,7 +24,7 @@ end
 assign_WorkPiece_WeakForm!(wp_ID, heat_dissipation; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, flux_bg_ID, conv_boundary; fem_domain = fem_domain)
 
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 compile_Updater_GPU(domain_ID = 1, fem_domain = fem_domain)
 
@@ -43,12 +44,12 @@ cpts.s[cp_IDs] .= 1600.
 
 assemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
-for i = 1:100
+for i = 1:10
     update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain)
     dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
 
     wp = fem_domain.workpieces[1]
-    write_VTK("$(@__DIR__)\\history\\3D_MetaFEM_Result_$i.vtk", wp; scale = 100)
+    write_VTK(joinpath(@__DIR__, "history", "3D_MetaFEM_Result_$i.vtk"), wp; scale = 100)
 end
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

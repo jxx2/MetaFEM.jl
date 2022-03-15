@@ -1,4 +1,7 @@
 using MetaFEM
+using CSV, DataFrames
+initialize_Definitions!()
+
 dim = 2
 fem_domain = FEM_Domain(dim = dim)
 
@@ -67,7 +70,7 @@ assign_WorkPiece_WeakForm!(wp_ID, WF_domain; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, fixed_bg_ID, WF_boundary_fix; fem_domain = fem_domain)
 assign_Boundary_WeakForm!(wp_ID, top_bg_ID, WF_boundary_top; fem_domain = fem_domain)
 
-initialize_LocalAssembly!(fem_domain.dim, fem_domain.workpieces; explicit_max_sd_order = 1)
+initialize_LocalAssembly!(fem_domain; explicit_max_sd_order = 1)
 mesh_Classical([wp_ID]; shape = element_shape, itp_type = :Serendipity, itp_order = 2, itg_order = 5, fem_domain = fem_domain)
 
 @time begin
@@ -163,7 +166,7 @@ for i = 1:tmax
 end
 
 wp = fem_domain.workpieces[1]
-write_VTK(string(folder, "\\", "2D_Cavity_Flow.vtk"), wp)
+write_VTK(string(@__DIR__, "2D_Cavity_Flow.vtk"), wp)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
