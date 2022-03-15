@@ -21,7 +21,7 @@ Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev
 ## Current Status
 The package is usable as a single GPU-accelerated generic FEM solver. 
 
-We will focus on make it a more well-developed toolbox before making it distributed.
+We will focus on making it a more well-developed toolbox first before making it distributed.
 
 In the versions after v0.1.4(included), the package will be under [Attribution-NonCommercial 2.0 Generic License (CC BY-NC 2.0)](https://creativecommons.org/licenses/by-nc/2.0/).
 

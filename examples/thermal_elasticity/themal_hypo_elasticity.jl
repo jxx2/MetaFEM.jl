@@ -109,7 +109,7 @@ while true
     counter += 1
 
     wp = fem_domain.workpieces[1]
-    # write_VTK("$(@__DIR__)\\history\\3D_MetaFEM_Result_$counter.vtk", wp; scale = 100, shift_sym = :d)
+    write_VTK("$(@__DIR__)\\history\\3D_MetaFEM_Result_$counter.vtk", wp; scale = 100, shift_sym = :d)
 
     update_OneStep!(fem_domain.time_discretization; fem_domain = fem_domain, max_iter = 3)
     dessemble_X!(fem_domain.workpieces, fem_domain.globalfield)
