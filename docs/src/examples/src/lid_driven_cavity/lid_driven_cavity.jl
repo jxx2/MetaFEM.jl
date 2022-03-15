@@ -3,7 +3,7 @@
 #
 # ![cavity_flow](cavity_both.png)
 #
-# The streamline is the Re = 1000 case and visualized in Paraview. The full source/data/visualization is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/lid_driven_cavity_flow).
+# The streamline is the Re = 1000 case and visualized in Paraview. The full source/data/visualization is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/incompressible_flow/lid_driven_cavity_flow).
 #
 # First, we load the package and declare the domain:
 using MetaFEM
@@ -136,7 +136,7 @@ for Re in Re_arr
     push!(exp_ys, collect(file_data.y))
 end
 # ## Visualization
-# CSV files contain Ghia's data is also in the [example folder] (https://github.com/jxx2/MetaFEM.jl/tree/main/examples/lid_driven_cavity_flow).
+# CSV files contain Ghia's data is also in the same folder.
 using Plots
 fig = plot(; size=(800,800), title = "Horizontal Velocity on Line x = 0.5", xticks = -0.4:0.2:1, limits = (-0.5, 1.05, -0.05, 1.05), yticks = 0.0:0.1:1, xlabel = "Normalized U₁", ylabel = "y")
 for i = 1:length(Re_arr)
