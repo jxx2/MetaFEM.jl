@@ -1,6 +1,6 @@
 # # Linear elastic cantilever bending
 # In this example we simulate a cantilever beam under different loads, as a straightforward check on the elasticity formulation by comparison to the analytical solutions.
-# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/cantilever).
+# The source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/linear_elasticity/cantilever).
 #
 # First, we load the package and declare the domain:
 using MetaFEM

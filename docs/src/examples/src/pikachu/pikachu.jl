@@ -2,7 +2,7 @@
 # ![pika1](pika1.png)
 #
 # Let's begin with simulating the temperature distribution on a pikachu. Among all the examples, this example contains the most detailed discussion.
-# The scripts with data/visualization can also be found [in the example folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid).
+# The scripts with data/visualization can also be found [in the example folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/thermal_conduction).
 #  
 # First, we load the package by:
 using MetaFEM

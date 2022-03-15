@@ -3,7 +3,7 @@
 
 # Plasticity involves nonlinear implicit constraints, which can't be derived by MetaFEM but we provide the interface to the native Julia.
 # The uniaxial loading case on the same beam geometry is as follows.
-# The source is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid).
+# The source is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/hypo_elastic_plasticity).
 # ## Geometry
 using MetaFEM
 initialize_Definitions!()

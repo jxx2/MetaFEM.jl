@@ -6,7 +6,7 @@
 # surely we can use MetaFEM as a pure spatial discretization package and write the customized timestep marching by ourselves, 
 # as in many other FEM packages. However, MetaFEM also provides an integrated generalized-alpha temporal discretization with only a little extra code, 
 # as in the following script.
-# The source is also in [the same folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid) as the last one.
+# The source is also in [the same folder](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/thermal_conduction) as the last one.
 #
 # ## Geometry
 # The geometry in the same with the last case:

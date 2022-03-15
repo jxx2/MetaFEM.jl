@@ -1,7 +1,7 @@
 # # Various thermal boundary conditions on a 2D stripe
 # ![stripe1](stripe_contour.png)
 #
-# This case is another thermal example, which is also a tutorial in [FEATool](https://www.featool.com/doc/heat_transfer_02_heat_transfer2). # The MetaFEM source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid).
+# This case is another thermal example, which is also a tutorial in [FEATool](https://www.featool.com/doc/heat_transfer_02_heat_transfer2). # The MetaFEM source with data/visualization can also be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/thermal_conduction).
 #
 # Load the package and define the domain:
 using MetaFEM

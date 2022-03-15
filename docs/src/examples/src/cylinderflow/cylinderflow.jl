@@ -7,7 +7,7 @@ initialize_Definitions!()
 dim = 3
 fem_domain = FEM_Domain(; dim = dim)
 # ## Geometry
-# Load the mesh "3D\_COMSOL\_Mesh.mphtxt" which can be found in [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/cylinder_flow) and should be put under the same directory of the script.
+# Load the mesh "3D\_COMSOL\_Mesh.mphtxt" which can be found in [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/incompressible_flow/cylinder_flow) and should be put under the same directory of the script.
 L = 2.5
 H = 0.41
 element_shape = :SIMPLEX

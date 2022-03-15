@@ -2,7 +2,7 @@
 # ![global](te.mp4)
 #
 # Combining thermal conduction and linear elasticity, we can do a thermal induced beam bending.
-# The source is [here]()
+# The source is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/thermal_elasticity)
 # ## Geometry
 # The geometry in the same as the cantilever case.
 using MetaFEM

@@ -3,7 +3,7 @@
 # ![NH](Mooney-Rivlin_Tensile_Test.png)
 
 # Extension to hyper-elasticity is very intuitive. We do a simple uniaxial loading case with the previous beam geometry.
-# The source is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/heat_transfer_solid).
+# The source is [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/hyper_elasticity).
 # ## Geometry
 using MetaFEM
 initialize_Definitions!()

@@ -3,7 +3,7 @@
 # In an elasticity class, we may learn that the stress concentration factor for a cylinderical hole is 3 while for a spherical hole is 2, as plotted:
 # ![sc](sc.png)
 #
-# In this example do the 3D case, while both 2D/3D source with mesh/data/visualization can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/stress_concentration).
+# In this example do the 3D case, while both 2D/3D source with mesh/data/visualization can be found [here](https://github.com/jxx2/MetaFEM.jl/tree/main/examples/linear_elasticity/stress_concentration).
 #
 # First, we load the package and declare the domain:
 using MetaFEM
