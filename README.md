@@ -23,7 +23,7 @@ The package is usable as a single GPU-accelerated generic FEM solver.
 
 We will focus on making it a more well-developed toolbox first before making it distributed.
 
-In the versions after v0.1.4(included), the package will be under [Attribution-NonCommercial 2.0 Generic License (CC BY-NC 2.0)](https://creativecommons.org/licenses/by-nc/2.0/).
+In the versions after v0.1.4(included), the package will be under [Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
 
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/
