@@ -2,9 +2,6 @@
 A GPU-accelerated generic FEM solver by meta-expressions
 ## Current Status
 The package is usable as a single GPU-accelerated generic FEM solver. No active developement.
-
-There are some issues with name export. In the example scripts, "using .MetaFEM" instead of "using MetaFEM" is a workaround.
-
 The package is under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html).  
 
 ## Documentation
