@@ -1,5 +1,11 @@
 # MetaFEM
 A GPU-accelerated generic FEM solver by meta-expressions
+## Current Status
+The package is usable as a single GPU-accelerated generic FEM solver. No active developement.
+
+There are some issues with name export. In the example scripts, "using .MetaFEM" instead of "using MetaFEM" is a workaround.
+
+The package is under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html).  
 
 ## Documentation
 
@@ -18,12 +24,7 @@ Quick examples can be found in [documents](https://jxx2.github.io/MetaFEM.jl/dev
 * [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl), is a mesh system/finite element toolbox. 
 * [JuliaFEM.jl](https://github.com/JuliaFEM/JuliaFEM.jl), is a solid mechanics solver.
 
-## Current Status
-The package is usable as a single GPU-accelerated generic FEM solver. 
 
-We will focus on making it a more well-developed toolbox first before making it distributed.
-
-In the versions after v0.1.4(included), the package will be under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 [docs-dev-img]: https://img.shields.io/badge/docs-latest%20release-blue
 [docs-dev-url]: https://jxx2.github.io/MetaFEM.jl/dev/
